@@ -12,7 +12,6 @@ import numpy as np
 import heapq 
 import scipy.signal as signal
 import pghi_plot
-from theano.scalar.basic import sgn
 
 dtype = np.float64
 
