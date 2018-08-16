@@ -8,6 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import scipy.signal as signal
 import numpy as np
 import os
+import glob
 from pydub import AudioSegment
 from matplotlib.ticker import StrMethodFormatter
 from matplotlib.ticker import FormatStrFormatter, MultipleLocator
@@ -20,7 +21,7 @@ class Pghi_Plot(object):
     classdocs
     '''
 
-    def __init__(self, show_plots=True, show_frames = 5, pre_title=''):
+    def __init__(self, show_plots=True, show_frames = 5, pre_title='', soundout = './soundout/', plotdir='./pghi_plots/', Fs=44100, verbose=True):
         '''
         parameters:
             show_plots
@@ -31,16 +32,22 @@ class Pghi_Plot(object):
                 string: pre_titleription to be prepended to each plot title
         '''
         
-        self.show_plots, self.show_frames, self.pre_title = show_plots, show_frames, pre_title
+        self.show_plots,self.show_frames,self.pre_title,self.soundout,self.plotdir,self.Fs,self.verbose = show_plots,show_frames,pre_title,soundout,plotdir,Fs,verbose
         try:
-            os.mkdir('./pghi_plots')
+            os.mkdir(plotdir)    
         except:
             pass
+        try:
+            os.mkdir(soundout)            
+        except:
+            pass                
         self.openfile = ''
+        self.mp3List = glob.glob('./*.mp3',recursive=False) + glob.glob('./*.wav',recursive=False)
+        self.fileCount=0          
         
     def save_plots(self, title):  
-        file =  './pghi_plots/' + title +  '.png' 
-        print ('saving plot to file:' + file)        
+        file =  self.plotdir + title +  '.png' 
+        print ('saving plot to file: ' + file)        
         plt.savefig(file,  dpi=300)    
         if self.show_plots:
             figManager = plt.get_current_fig_manager()
@@ -52,9 +59,11 @@ class Pghi_Plot(object):
             plt.close()
          
     def spectrogram(self, samples, title):
+        if not self.verbose: return        
         title = self.pre_title  +file_sep+title      
+#         samples = self.limit(samples)
         plt.title( title )           
-        ff, tt, Sxx = signal.spectrogram(samples, fs=44100, nfft=8192)
+        ff, tt, Sxx = signal.spectrogram(samples, fs=self.Fs, nfft=8192)
     
         plt.pcolormesh(tt, ff[:1025], Sxx[:1025], cmap='gray_r')
         plt.xlabel('samples')
@@ -64,9 +73,9 @@ class Pghi_Plot(object):
         
     prop_cycle = plt.rcParams['axes.prop_cycle']    
 
-    def plot_waveforms(self, title, sigs,fontsize=None):    
+    def plot_waveforms(self, title, sigs,fontsize=None):  
+        if not self.verbose: return   
         title = self.pre_title  + file_sep + title  
-
         fig = plt.figure()
         plt.title(title)   
         plt.ylabel('amplitude', color='b',fontsize=fontsize)
@@ -74,6 +83,7 @@ class Pghi_Plot(object):
         ax = plt.gca()
     
         for i,s in enumerate(sigs):
+            s = self.limit(s)                       
             xs = np.arange(s.shape[0])
             ys = s
             ax.scatter(xs, ys, color = colors[i],s=3)      
@@ -82,6 +92,9 @@ class Pghi_Plot(object):
         self.save_plots(title)
         
     def minmax(self, startpoints, stime, sfreq):
+        ''' 
+        limit the display to the region of the startpoints
+        '''
         if startpoints is None:
             minfreq = mintime = 0
             maxfreq = maxtime = 2*self.show_frames
@@ -95,9 +108,9 @@ class Pghi_Plot(object):
         return mintime, maxtime, minfreq, maxfreq
     
     def subplot(self, figax, sigs, r, c, p, elev, azim, mask, startpoints, fontsize=None):
-
         ax = figax.add_subplot(r,c,p, projection='3d',elev = elev, azim=azim)     
         for i, s in enumerate(sigs):
+            sigs = self.limit(sigs)
             mintime, maxtime, minfreq, maxfreq = self.minmax(startpoints, s.shape[0], s.shape[1])            
             values = s[mintime:maxtime, minfreq:maxfreq]           
             if mask is None:  #plot all values                                      
@@ -134,30 +147,47 @@ class Pghi_Plot(object):
             tick.label.set_rotation('horizontal')    
                                                              
         ax.set_zlabel('mag',fontsize=fontsize)   
-        ax.set_ylabel('freq',fontsize=fontsize)
-        ax.set_xlabel('frames',fontsize=fontsize)
+        ax.set_ylabel('STFT bin',fontsize=fontsize)
+        ax.set_xlabel('frame',fontsize=fontsize)
         
-    def signal_to_file(self, mono, title, Fs = 44100 ):       
-        title = self.pre_title  + file_sep+ title              
-        print('saving signal to file: {}'.format(title))
-        w = .5*(np.max(mono)-np.min(mono))
-        mono = mono/w
-        a = np.max(mono)+np.min(mono)
-        mono = mono - a/2    
-        mono = np.array(mono) *( 2**15-1)
-        stereo = [mono, mono]
-        stereo = np.array(stereo, dtype=np.int16)
+    def normalize(self, mono):
+        ''' return range (-1,1) '''
+        return 2*(mono - np.min(mono))/np.ptp(mono) -1.0
+        
+    def signal_to_file(self, sig, title ):  
+#         print (np.max(sig),np.min(sig) ) 
+        ''' stores the signal in a tile, with title   
+        
+        parameters
+            sig 
+                either an numpy array of shape (2,n)  containing the right
+                and left channels, in which case the stereo result is written
+                to the soundout directory
+                or a numpy array which is store to the plot_files directory
+            title 
+                string to name the file. 
+            '''
+   
+        if len(sig.shape) != 2: # is mono
+            if not self.verbose: return            
+            stereo = [sig, sig]        
+            filename = self.plotdir+ self.pre_title  + file_sep+ title +'.mp3'
+        else:
+            filename = self.soundout+'_' +title  +'.mp3' 
+            stereo = sig        
+        print('saving signal to file: {}'.format(filename))
+        stereo = (self.normalize(stereo))*(2**15-1)    
+        assert np.max(stereo) < 2**15
+        assert np.min(stereo) >= -2**15         
+        stereo = np.array(stereo, dtype=np.int16)        
         stereo = np.rollaxis(stereo, 1)
         stereo = stereo.flatten()
         stereo = stereo[: 4*(stereo.shape[0]//4)]
-        output_sound = AudioSegment(data=stereo, sample_width=2,frame_rate=Fs, channels=2)    
-        try:
-            os.mkdir('./pghi_plots')
-        except:
-            pass     
-        output_sound.export("./pghi_plots/"+title+".mp3", format="mp3")  
+        output_sound = AudioSegment(data=stereo, sample_width=2,frame_rate=self.Fs, channels=2)    
+        output_sound.export(filename, format="mp3")  
                         
     def plot_3d(self, title, sigs, mask=None, startpoints=None):
+        if not self.verbose: return        
         title = self.pre_title  + file_sep + title       
         figax = plt.figure()   
         plt.axis('off')    
@@ -170,11 +200,21 @@ class Pghi_Plot(object):
             self.subplot(figax, sigs, 2,2, 2, 0,  0,  mask,startpoints,fontsize=6)
             self.subplot(figax, sigs, 2,2, 3, 0,  45, mask,startpoints,fontsize=6)
             self.subplot(figax, sigs, 2,2, 4, 0,  90, mask,startpoints,fontsize=6)                           
-        self.save_plots(title)     
+        self.save_plots(title) 
         
+    def limit(self, points):   
+        ''' limit the number of points plotted to speed things up
+        '''
+        points = np.array(points)
+        if points.shape[0] > 5000:
+            print ('limiting the number of plotted points plotted') 
+            points = points[:5000]
+        return points
+               
     def quiver(self, title, qtuples, mask=None, startpoints=None):   
+        if not self.verbose: return
         title = self.pre_title + file_sep + title
-
+        qtuples = self.limit(qtuples)
         figax = plt.figure()
         ax = figax.add_subplot(111, projection='3d',elev = 45, azim=45)
         plt.title(title)        
@@ -201,10 +241,52 @@ class Pghi_Plot(object):
         self.save_plots(title)
          
     def logprint(self, txt):   
-        if self.openfile != './pghi_plots/' + self.pre_title + '.txt' :
-            self.openfile = './pghi_plots/' + self.pre_title+ '.txt' 
-            self.file = open(self.openfile, mode='w')
-        print(txt, file=self.file, flush=True)
+        if self.verbose:
+            if self.openfile != './pghi_plots/' + 'log.txt' :
+                self.openfile = './pghi_plots/' + 'log.txt' 
+                self.file = open(self.openfile, mode='w')
+            print(txt, file=self.file, flush=True)
         print(txt)
+           
+    def get_song(self):
+        ''' 
+            get a song and keep it in self.sound_clip
+            sound_clip shape= (samples, channels) where channels = 2
+            sound is normalized in the range -1 to 1
+        returns 
+            sound_title without the .mp3 extension
+            sound
+                stereo numpy array (samples,2)
+            
+            
+        '''
+        if self.fileCount >= len(self.mp3List):
+            return None,None
+        file = self.mp3List[self.fileCount]
+        self.logprint('file={}'.format(file))
+        _,filename=os.path.split(file)
         
-                     
+        self.fileCount +=1
+        try:
+            song = AudioSegment.from_mp3(file)
+        except:
+            self.logprint("song decoding error")
+            return self.get_song();
+
+        if song.frame_rate != self.Fs:
+            self.Fs = song.frame_rate
+            self.logprint("changing frame rate")
+#             return self.get_song();
+
+        samples = song.get_array_of_samples()
+        samples = np.array(samples,dtype=np.float32)
+        
+        if song.channels == 1:
+            stereo = np.stack([samples,samples])
+            stereo = np.rollaxis(stereo,1)
+        else:
+            stereo= np.reshape(samples,(-1,2))                
+        stereo = (self.normalize(stereo))
+        return filename.split('.')[0], stereo
+
+                   
