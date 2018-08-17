@@ -42,28 +42,20 @@ def sweep_test():
     p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])        
           
 def audio_test():
-    p.plt.fileCount =0   
-    p.test( 'audio test')   
+    p.plt.fileCount =0    
     for nfile in range(100): # arbitrary file limit
         song_title, audio_in = p.plt.get_song()
         if audio_in is None: 
-            break
-        p.test( 'audio test{}'.format(nfile))   
-      
-        audio_in = np.rollaxis(audio_in,1)
+            break          
         stereo = []
-        for i in range(2):
-            if i==0:
-                p.test( 'audio test{} left'.format(nfile))  
-            else:
-                p.test( 'audio test{} right'.format(nfile)) 
-                 
+        for i in range(audio_in.shape[0]): # channels = 2 for stereo
+            p.test( 'audio test{} ch {}'.format(nfile,i))             
             signal_in = audio_in[i]
             signal_out = p.signal_to_signal(signal_in)         
             p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])
             stereo.append( signal_out)
         p.test( 'audio test{}'.format(nfile))
-        p.plt.signal_to_file(np.stack(stereo), song_title) 
+        p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
               
 ############################  program start ###############################
 

@@ -86,7 +86,7 @@ class Pghi_Plot(object):
             s = self.limit(s)                       
             xs = np.arange(s.shape[0])
             ys = s
-            ax.scatter(xs, ys, color = colors[i],s=3)      
+            ax.scatter(xs, ys, color = colors[i%len(colors)],s=3)      
         plt.grid()
         plt.axis('tight')
         self.save_plots(title)
@@ -126,7 +126,7 @@ class Pghi_Plot(object):
                 sn=8
             else:
                 sn=3  
-            ax.scatter(xs, ys, zs, s=sn, color = colors[i+1]) 
+            ax.scatter(xs, ys, zs, s=sn, color = colors[(i+1)%len(colors)]) 
         if startpoints is not None:
             for stpt in startpoints:                
                 n = stpt[0] 
@@ -154,36 +154,37 @@ class Pghi_Plot(object):
         ''' return range (-1,1) '''
         return 2*(mono - np.min(mono))/np.ptp(mono) -1.0
         
-    def signal_to_file(self, sig, title ):  
+    def signal_to_file(self, sig, title, override_verbose = False):  
 #         print (np.max(sig),np.min(sig) ) 
         ''' stores the signal in a tile, with title   
         
         parameters
             sig 
-                either an numpy array of shape (2,n)  containing the right
-                and left channels, in which case the stereo result is written
-                to the soundout directory
-                or a numpy array which is store to the plot_files directory
+                either an numpy array of shape (c,n)  containing the right
+                and left channels, where c is the number of channels
+                or a numpy array (n)which is store to the plot_files directory
             title 
                 string to name the file. 
             '''
-   
-        if len(sig.shape) != 2: # is mono
-            if not self.verbose: return            
-            stereo = [sig, sig]        
-            filename = self.plotdir+ self.pre_title  + file_sep+ title +'.mp3'
+    
+        if override_verbose == False:
+            if not self.verbose: return     
+            filename = self.plotdir+ self.pre_title  + file_sep+ title +'.mp3'   
         else:
-            filename = self.soundout+'_' +title  +'.mp3' 
-            stereo = sig        
+            filename = self.soundout+'_' +title  +'.mp3'                      
+            
+        if len(sig.shape) == 1:
+            sig = np.reshape(sig, (1,-1))
+        channels=sig.shape[0]
         print('saving signal to file: {}'.format(filename))
-        stereo = (self.normalize(stereo))*(2**15-1)    
-        assert np.max(stereo) < 2**15
-        assert np.min(stereo) >= -2**15         
-        stereo = np.array(stereo, dtype=np.int16)        
-        stereo = np.rollaxis(stereo, 1)
-        stereo = stereo.flatten()
-        stereo = stereo[: 4*(stereo.shape[0]//4)]
-        output_sound = AudioSegment(data=stereo, sample_width=2,frame_rate=self.Fs, channels=2)    
+        sig = (self.normalize(sig))*(2**15-1)    
+        assert np.max(sig) < 2**15
+        assert np.min(sig) >= -2**15         
+        sig = np.array(sig, dtype=np.int16)        
+        sig = np.rollaxis(sig, 1)
+        sig = sig.flatten()
+        sig = sig[: 4*(sig.shape[0]//4)]
+        output_sound = AudioSegment(data=sig, sample_width=2,frame_rate=self.Fs, channels=channels)    
         output_sound.export(filename, format="mp3")  
                         
     def plot_3d(self, title, sigs, mask=None, startpoints=None):
@@ -256,9 +257,8 @@ class Pghi_Plot(object):
         returns 
             sound_title without the .mp3 extension
             sound
-                stereo numpy array (samples,2)
-            
-            
+                stereo numpy array (n,samples)
+                where n is the number of channels, i.e. 2 = stereo            
         '''
         if self.fileCount >= len(self.mp3List):
             return None,None
@@ -271,22 +271,17 @@ class Pghi_Plot(object):
             song = AudioSegment.from_mp3(file)
         except:
             self.logprint("song decoding error")
-            return self.get_song();
+            return self.get_song() # try to get next song
 
         if song.frame_rate != self.Fs:
             self.Fs = song.frame_rate
             self.logprint("changing frame rate")
-#             return self.get_song();
 
         samples = song.get_array_of_samples()
         samples = np.array(samples,dtype=np.float32)
-        
-        if song.channels == 1:
-            stereo = np.stack([samples,samples])
-            stereo = np.rollaxis(stereo,1)
-        else:
-            stereo= np.reshape(samples,(-1,2))                
-        stereo = (self.normalize(stereo))
-        return filename.split('.')[0], stereo
+        samples= np.reshape(samples,(-1,song.channels))      
+        samples = np.rollaxis(samples,1)     
+        samples = (self.normalize(samples))
+        return filename.split('.')[0], samples
 
                    
