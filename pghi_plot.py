@@ -13,7 +13,8 @@ from pydub import AudioSegment
 from matplotlib.ticker import StrMethodFormatter
 from matplotlib.ticker import FormatStrFormatter, MultipleLocator
 
-
+PLOT_POINTS_LIMIT = 20000
+PLOT_TICKS_LIMIT = 5000
 colors =  ['r', 'g', 'b', 'c', 'm', 'y', 'k']
 file_sep = ' '
 class Pghi_Plot(object):
@@ -57,15 +58,44 @@ class Pghi_Plot(object):
             plt.clf() # savefig does not clear the figure like show does
             plt.cla()      
             plt.close()
+            
+    def colorgram(self, title, samples, mask=None, startpoints = None):
+        if not self.verbose: return        
+        title = self.pre_title  +file_sep+title     
+         
+        fig = plt.figure()  
+        plt.title( title )          
+        ax = plt.gca()
+        plt.imshow(samples, origin = 'lower', cmap='hot') 
+        
+#         sig = self.limit(samples)
+#         mintime, maxtime, minfreq, maxfreq = self.minmax(startpoints, sig.shape[0], sig.shape[1])            
+#         values = sig[mintime:maxtime, minfreq:maxfreq]    
+#         plt.imshow(values)       
+#         if mask is None:  #plot all values                                      
+#             xs = np.arange(values.size) % values.shape[0]
+#             ys = np.arange(values.size) // values.shape[1]
+#             zs = np.reshape(values,(values.size))
+#                             
+#         else:                         
+#             indices = np.where(mask[mintime:maxtime, minfreq:maxfreq]   == True)
+#             xs = indices[0] + mintime 
+#             ys = indices[1] + minfreq      
+#             zs = values[indices]  
+                    
+#         plt.pcolormesh(xs, ys, zs, cmap='gray_r')
+        plt.xlabel('frames')
+        plt.ylabel('Frequency Bins')
+        plt.grid()
+        self.save_plots(title)
          
     def spectrogram(self, samples, title):
         if not self.verbose: return        
         title = self.pre_title  +file_sep+title      
-#         samples = self.limit(samples)
         plt.title( title )           
         ff, tt, Sxx = signal.spectrogram(samples, fs=self.Fs, nfft=8192)
     
-        plt.pcolormesh(tt, ff[:1025], Sxx[:1025], cmap='gray_r')
+        plt.pcolormesh(tt, ff[:1025], Sxx[:1025], cmap='hot_r')
         plt.xlabel('samples')
         plt.ylabel('Frequency (Hz)')
         plt.grid()
@@ -83,7 +113,7 @@ class Pghi_Plot(object):
         ax = plt.gca()
     
         for i,s in enumerate(sigs):
-            s = self.limit(s)                       
+            s = s[:PLOT_TICKS_LIMIT]                       
             xs = np.arange(s.shape[0])
             ys = s
             ax.scatter(xs, ys, color = colors[i%len(colors)],s=3)      
@@ -100,25 +130,31 @@ class Pghi_Plot(object):
             maxfreq = maxtime = 2*self.show_frames
         else:
             starttimes = [s[0] for s in startpoints]
-            startfreqs = [s[1] for s in startpoints]                
+            startfreqs = [s[1] for s in startpoints]           
+            
+#             starttimes = [startpoints[0][0]]
+#             startfreqs = [startpoints[0][1]]                       
+                 
             mintime = max(0,min(starttimes)-self.show_frames)
             maxtime = min(stime,max(starttimes)+self.show_frames)
             minfreq = max(0,min(startfreqs)-self.show_frames)
             maxfreq = min(sfreq,max(startfreqs)+self.show_frames)  
+            
         return mintime, maxtime, minfreq, maxfreq
     
     def subplot(self, figax, sigs, r, c, p, elev, azim, mask, startpoints, fontsize=None):
         ax = figax.add_subplot(r,c,p, projection='3d',elev = elev, azim=azim)     
         for i, s in enumerate(sigs):
-            sigs = self.limit(sigs)
+
             mintime, maxtime, minfreq, maxfreq = self.minmax(startpoints, s.shape[0], s.shape[1])            
-            values = s[mintime:maxtime, minfreq:maxfreq]           
+            values = s[mintime:maxtime, minfreq:maxfreq]     
+            values = self.limit(values)                  
             if mask is None:  #plot all values                                      
                 xs = np.arange(values.size) % values.shape[0]
                 ys = np.arange(values.size) // values.shape[1]
                 zs = np.reshape(values,(values.size))
             else:                         
-                indices = np.where(mask[mintime:maxtime, minfreq:maxfreq]   == True)
+                indices = np.where(self.limit(mask[mintime:maxtime, minfreq:maxfreq])   == True)
                 xs = indices[0] + mintime 
                 ys = indices[1] + minfreq      
                 zs = values[indices]  
@@ -207,9 +243,12 @@ class Pghi_Plot(object):
         ''' limit the number of points plotted to speed things up
         '''
         points = np.array(points)
-        if points.shape[0] > 5000:
+    
+        if points.size > PLOT_POINTS_LIMIT:
+            s0  = int(PLOT_POINTS_LIMIT/points[0].size)
             print ('limiting the number of plotted points plotted') 
-            points = points[:5000]
+            points = points[:s0]
+ 
         return points
                
     def quiver(self, title, qtuples, mask=None, startpoints=None):   
