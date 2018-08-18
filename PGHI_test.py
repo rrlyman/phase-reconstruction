@@ -12,6 +12,7 @@ Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 import numpy as np
 import pghi
 import scipy.signal as signal
+import time
 
 def sine_test():
     f = 10*p.Fs/p.M # fft bin #10
@@ -42,30 +43,32 @@ def sweep_test():
     p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])        
           
 def audio_test():
-    p.plt.fileCount =0    
+    p.plt.fileCount =0   
+
     for nfile in range(100): # arbitrary file limit
+        etime = time.clock()        
         song_title, audio_in = p.plt.get_song()
         if audio_in is None: 
             break          
         stereo = []
         for i in range(audio_in.shape[0]): # channels = 2 for stereo
-            p.test( 'audio test{} ch {}'.format(nfile,i))             
+            p.test(song_title + ' ch{}'.format(i))             
             signal_in = audio_in[i]
             signal_out = p.signal_to_signal(signal_in)         
             p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])
             stereo.append( signal_out)
-        p.test( 'audio test{}'.format(nfile))
+        p.test( song_title)
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
-              
+        p.logprint('elasped time = {:7.1f} seconds\n'.format(time.clock()- etime))
 ############################  program start ###############################
 
-p = pghi.PGHI(tol = 1e-3, show_plots = False, show_frames=100, verbose=True)
+p = pghi.PGHI(tol = 1e-3, show_plots = False, verbose=True)
 
 # gl = 2048
 # g = signal.windows.hann(gl)    
 # gamma =gl**2*.25645
 # p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
-
+# p.setverbose(False)
 pulse_test()
 sine_test()
 sweep_test()
