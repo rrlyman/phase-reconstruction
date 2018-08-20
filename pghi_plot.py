@@ -15,7 +15,7 @@ from matplotlib.ticker import FormatStrFormatter, MultipleLocator
 
 PLOT_POINTS_LIMIT = 20000
 PLOT_TICKS_LIMIT = 5000
-colors =  ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+
 file_sep = ' '
 class Pghi_Plot(object):
     '''
@@ -34,6 +34,7 @@ class Pghi_Plot(object):
         '''
         
         self.show_plots,self.show_frames,self.pre_title,self.soundout,self.plotdir,self.Fs,self.verbose = show_plots,show_frames,pre_title,soundout,plotdir,Fs,verbose
+        self.colors =  ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'tab:orange', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive']
         try:
             os.mkdir(plotdir)    
         except:
@@ -116,7 +117,7 @@ class Pghi_Plot(object):
             s = s[:PLOT_TICKS_LIMIT]                       
             xs = np.arange(s.shape[0])
             ys = s
-            ax.scatter(xs, ys, color = colors[i%len(colors)],s=3)      
+            ax.scatter(xs, ys, color = self.colors[i%len(self.colors)],s=3)      
         plt.grid()
         plt.axis('tight')
         self.save_plots(title)
@@ -162,12 +163,17 @@ class Pghi_Plot(object):
                 sn=8
             else:
                 sn=3  
-            ax.scatter(xs, ys, zs, s=sn, color = colors[(i+1)%len(colors)]) 
+            ax.scatter(xs, ys, zs, s=sn, color = self.colors[(i+1)%len(self.colors)]) 
+        mint = min(xs)
+        maxt = max(xs)
+        minf = min(ys)
+        maxf = max(ys)
         if startpoints is not None:
             for stpt in startpoints:                
                 n = stpt[0] 
                 m = stpt[1]
-            ax.scatter([n],[m], [s[n,m]], s=30, color = colors[0])
+                if n >= mint and n <= maxt and m >= minf and m <= maxf:
+                    ax.scatter([n ],[m ], [s[n,m]], s=30, color = self.colors[0])
         ax.yaxis.set_major_formatter(StrMethodFormatter('{x:.0f}'))
         ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.0f}'))
         ax.zaxis.set_major_formatter(StrMethodFormatter('{x:.2e}'))            
@@ -272,12 +278,12 @@ class Pghi_Plot(object):
             v.append(q[4])
             w.append(q[5])                        
                    
-        ax.quiver(x,y,z,u,v,w,length=.5, arrow_length_ratio=.3, pivot='tail', color = colors[1], normalize=False)
+        ax.quiver(x,y,z,u,v,w,length=.5, arrow_length_ratio=.3, pivot='tail', color = self.colors[1], normalize=False)
         if startpoints is not None:
             for stpt in startpoints:                
                 n = stpt[0]
                 m = stpt[1]
-                ax.scatter([n],[m], [z[0]], s=30, color = colors[0])     
+                ax.scatter([n],[m], [z[0]], s=30, color = self.colors[0])     
         self.save_plots(title)
          
     def logprint(self, txt):   

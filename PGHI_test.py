@@ -1,5 +1,5 @@
 '''
-Created on Dec 26, 2017
+Created on Jul 7, 2018
 
 based upon
 
@@ -26,8 +26,10 @@ def pulse_test():
     p.test( 'pulse test')
     magnitude_frames = np.zeros((300,int(p.M/2+1)))
     p.original_phase = magnitude_frames    
-    magnitude_frames[20,:]= 1
-    phase_estimated_frames = p.magnitude_to_phase_estimate(magnitude_frames)    
+    magnitude_frames[20,:]= 1  # pulse at frame 20
+    phase_estimated_frames = p.magnitude_to_phase_estimate(magnitude_frames)  
+    signal_out = p.magphase_frames_to_signal (magnitude_frames, phase_estimated_frames)
+    p.plt.plot_waveforms('Signal out', [signal_out])            
     
 def sweep_test():
     freq_high = 5000 #Hz
@@ -43,9 +45,7 @@ def sweep_test():
     p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])        
           
 def audio_test():
-    p.plt.fileCount =0   
-
-    for nfile in range(100): # arbitrary file limit
+    for nfile in range(100): # 100 arbitrary file limit
         etime = time.clock()        
         song_title, audio_in = p.plt.get_song()
         if audio_in is None: 
@@ -60,9 +60,10 @@ def audio_test():
         p.test( song_title)
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
         p.logprint('elasped time = {:7.1f} seconds\n'.format(time.clock()- etime))
+        
 ############################  program start ###############################
 
-p = pghi.PGHI(tol = 1e-3, show_plots = False, verbose=True)
+p = pghi.PGHI(tol = 1e-6, show_frames = 100, show_plots = False, verbose=True)
 
 # gl = 2048
 # g = signal.windows.hann(gl)    
@@ -72,7 +73,7 @@ p = pghi.PGHI(tol = 1e-3, show_plots = False, verbose=True)
 pulse_test()
 sine_test()
 sweep_test()
-p.setverbose(False)    
+# p.setverbose(False)    
 audio_test()
 
 
