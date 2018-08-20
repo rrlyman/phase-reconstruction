@@ -60,10 +60,10 @@ def audio_test():
         p.test( song_title)
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
         p.logprint('elasped time = {:7.1f} seconds\n'.format(time.clock()- etime))
-        
-############################  program start ###############################
 
-p = pghi.PGHI(tol = 1e-6, show_frames = 100, show_plots = False, verbose=True)
+############################  program start ###############################
+p = pghi.PGHI(tol = 1e-4, show_frames = 100, show_plots = False, verbose=True)
+
 
 # gl = 2048
 # g = signal.windows.hann(gl)    
@@ -73,7 +73,7 @@ p = pghi.PGHI(tol = 1e-6, show_frames = 100, show_plots = False, verbose=True)
 pulse_test()
 sine_test()
 sweep_test()
-# p.setverbose(False)    
+p.setverbose(False)    
 audio_test()
 
 
