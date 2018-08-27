@@ -62,29 +62,15 @@ class Pghi_Plot(object):
             
     def colorgram(self, title, samples, mask=None, startpoints = None):
         if not self.verbose: return        
+        if mask is not None:
+            samples = samples*mask
+        samples = np.transpose(samples)
         title = self.pre_title  +file_sep+title     
          
         fig = plt.figure()  
         plt.title( title )          
         ax = plt.gca()
-        plt.imshow(samples, origin = 'lower', cmap='hot') 
-        
-#         sig = self.limit(samples)
-#         mintime, maxtime, minfreq, maxfreq = self.minmax(startpoints, sig.shape[0], sig.shape[1])            
-#         values = sig[mintime:maxtime, minfreq:maxfreq]    
-#         plt.imshow(values)       
-#         if mask is None:  #plot all values                                      
-#             xs = np.arange(values.size) % values.shape[0]
-#             ys = np.arange(values.size) // values.shape[1]
-#             zs = np.reshape(values,(values.size))
-#                             
-#         else:                         
-#             indices = np.where(mask[mintime:maxtime, minfreq:maxfreq]   == True)
-#             xs = indices[0] + mintime 
-#             ys = indices[1] + minfreq      
-#             zs = values[indices]  
-                    
-#         plt.pcolormesh(xs, ys, zs, cmap='gray_r')
+        plt.imshow(samples, origin = 'lower', cmap='hot_r') 
         plt.xlabel('frames')
         plt.ylabel('Frequency Bins')
         plt.grid()
@@ -94,9 +80,9 @@ class Pghi_Plot(object):
         if not self.verbose: return        
         title = self.pre_title  +file_sep+title      
         plt.title( title )           
-        ff, tt, Sxx = signal.spectrogram(samples, fs=self.Fs, nfft=8192)
+        ff, tt, Sxx = signal.spectrogram(samples,  nfft=8192)
     
-        plt.pcolormesh(tt, ff[:1025], Sxx[:1025], cmap='hot_r')
+        plt.pcolormesh(tt, ff, Sxx, cmap='hot_r')
         plt.xlabel('samples')
         plt.ylabel('Frequency (Hz)')
         plt.grid()
@@ -252,7 +238,7 @@ class Pghi_Plot(object):
     
         if points.size > PLOT_POINTS_LIMIT:
             s0  = int(PLOT_POINTS_LIMIT/points[0].size)
-            print ('limiting the number of plotted points plotted') 
+            print ('limiting the number of plotted points') 
             points = points[:s0]
  
         return points
@@ -278,7 +264,7 @@ class Pghi_Plot(object):
             v.append(q[4])
             w.append(q[5])                        
                    
-        ax.quiver(x,y,z,u,v,w,length=.5, arrow_length_ratio=.3, pivot='tail', color = self.colors[1], normalize=False)
+        ax.quiver(x,y,z,u,v,w,length=.5, arrow_length_ratio=.3, pivot='tail', color = self.colors[1], normalize=True)
         if startpoints is not None:
             for stpt in startpoints:                
                 n = stpt[0]

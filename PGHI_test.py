@@ -25,7 +25,7 @@ def sine_test():
 def pulse_test():
     p.test( 'pulse test')
     magnitude_frames = np.zeros((300,int(p.M/2+1)))
-    p.original_phase = magnitude_frames    
+    p.corig_frames = None # kludge to keep from plotting original_phase 
     magnitude_frames[20,:]= 1  # pulse at frame 20
     phase_estimated_frames = p.magnitude_to_phase_estimate(magnitude_frames)  
     signal_out = p.magphase_frames_to_signal (magnitude_frames, phase_estimated_frames)
@@ -60,6 +60,23 @@ def audio_test():
         p.test( song_title)
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
         p.logprint('elasped time = {:7.1f} seconds\n'.format(time.clock()- etime))
+        
+def warble_test():
+    f1 = 4*p.Fs/p.M # cycles per second
+    f2 = 16*p.Fs/p.M
+    # set so there is no discontinuity in phase when changing frequencies
+    samples_for_2_pi_radians = int(p.Fs/f1)
+    p.test('warble test {:.0f}Hz,{:.0f}Hz'.format(f1, f2))    
+    dur = int(.25*p.Fs/p.a_a)
+    signal_in = []
+    for k in range(dur):
+        signal_in.append(signal.chirp(range(samples_for_2_pi_radians), f1/p.Fs, samples_for_2_pi_radians, f1/p.Fs))
+        signal_in.append(signal.chirp(range(samples_for_2_pi_radians), f2/p.Fs, samples_for_2_pi_radians, f2/p.Fs))                         
+
+    signal_in = np.concatenate(signal_in)
+    p.logprint ('duration of sound = {0:10.7} seconds'.format(signal_in.shape[0]/p.Fs)) 
+    signal_out = p.signal_to_signal(signal_in)
+    p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])       
 
 ############################  program start ###############################
 p = pghi.PGHI(tol = 1e-4, show_frames = 100, show_plots = False, verbose=True)
@@ -70,6 +87,7 @@ p = pghi.PGHI(tol = 1e-4, show_frames = 100, show_plots = False, verbose=True)
 # gamma =gl**2*.25645
 # p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
 # p.setverbose(False)
+warble_test()
 pulse_test()
 sine_test()
 sweep_test()
