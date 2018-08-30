@@ -12,6 +12,7 @@ import numpy as np
 import heapq 
 import scipy.signal as signal
 import pghi_plot
+from scipy import ndimage
 
 dtype = np.float64
 
@@ -20,12 +21,15 @@ class PGHI(object):
     implements the Phase Gradient Heap Integration - PGHI algorithm
     '''
 
-    def __init__(self, a_a=128, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
+    def __init__(self, redundancy=8, speed=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
         '''
         Parameters
-            a_a    
-                analysis hop size
-                measure:  samples
+            redundancy    
+                number of hops per window
+            speed 
+                multiplier to lengthen time, higher number is slower output
+            freq_scale
+                multiplier to compress frequency
             M
                 number of samples in for each FFT calculation
                 measure: samples               
@@ -60,7 +64,7 @@ class PGHI(object):
                 sampling frequency
                 measure - samples per second
         Example
-            p = pghi.PGHI(a_a=256, M=2048,tol = 1e-6, show_plots = False, show_frames=20)
+            p = pghi.PGHI(redundancy=8, M=2048,tol = 1e-6, show_plots = False, show_frames=20)
         '''  
         if gl is None: gl = M  
         if gamma is not None:
@@ -71,32 +75,38 @@ class PGHI(object):
             lambdasqr = lambda_**2   
             gamma = 2*np.pi*lambdasqr         
             g=np.array(signal.windows.gaussian(2*gl+1, lambda_*2, sym=False), dtype = dtype)[1:2*gl+1:2]
+                 
 
-        self.a_a,self.M,self.tol,self.lambdasqr,self.g,self.gl,h, self.pre_title,self.verbose,self.Fs, self.gamma = a_a,M,tol,lambdasqr,g,gl,h,pre_title,verbose,Fs, gamma
+        self.redundancy,self.speed,self.M,self.tol,self.lambdasqr,self.g,self.gl,h, self.pre_title,self.verbose,self.Fs, self.gamma = redundancy, speed,  M,tol,lambdasqr,g,gl,h,pre_title,verbose,Fs, gamma
 
-        self.M2 = int(self.M/2) + 1          
+        self.M2 = int(self.M/2) + 1    
+   
+        self.a_s =  int(self.M/redundancy)   
+        self.a_a = int(self.a_s/speed)       
+                      
         self.corig = None
         self.plt = pghi_plot.Pghi_Plot( show_plots = show_plots,  show_frames = show_frames, pre_title=pre_title)    
            
         self.setverbose(verbose)
         if lambdasqr is None: self.logprint('parameter error: must supply lambdasqr and g')            
-        self.logprint('a_a(analysis time hop size) = {} samples'.format(a_a))    
+        self.logprint('a_a(analysis time hop size) = {} samples'.format(self.a_a))   
+        self.logprint('a_s(synthesis time hop size) = {} samples'.format(self.a_s)) 
         self.logprint('M, samples per frame = {}'.format(M))     
         self.logprint('tol, small signal filter tolerance ratio = {}'.format(tol))  
         self.logprint('lambdasqr = {:9.4f} 2*pi*samples**2  '.format(self.lambdasqr))
         self.logprint('gamma = {:9.4f} 2*pi*samples**2  '.format(self.gamma))        
         self.logprint('h, window height at edges = {} relative to max height'.format(h))            
-        self.logprint('fft bins = {}'.format(self.M2))  
-        redundancy = int (self.M/self.a_a)                                    
+        self.logprint('fft bins = {}'.format(self.M2))                                    
         self.logprint ('redundancy = {}'.format(redundancy ))  
+        self.logprint ('speed = {}'.format(speed )) 
         self.plt.plot_waveforms("Window Analysis", [self.g])         
 
         denom = 0    # calculate the synthesis window 
         self.gsynth = np.zeros_like(self.g, dtype = dtype)
-        for l in range (self.gl):
+        for l in range (int(self.gl)):
             denom = 0                
             for n in range(-redundancy, redundancy+1):
-                dl = l-n*self.a_a
+                dl = l-n*self.a_s
                 if dl >=0 and dl < self.M:
                     denom += self.g[dl]**2
             self.gsynth[l] = self.g[l]/denom 
@@ -120,15 +130,15 @@ class PGHI(object):
     def dxdw(self,x):
         ''' return the derivative of x with respect to frequency'''
         xp = np.pad(x,1,mode='edge')
-#         dw = (np.multiply(3,(xp[1:-1,:-2]) + np.multiply(2,xp[1:-1,1:-1]) + np.multiply(3,xp[1:-1,2:])) - np.multiply(6,(xp[1:-1,:-2] + xp[1:-1,1:-1] + xp[1:-1,2:])))/6           
-        dw = (xp[1:-1,2:]-xp[1:-1,:-2])/2    
+        dw = (np.multiply(3,(xp[1:-1,:-2]) + np.multiply(2,xp[1:-1,1:-1]) + np.multiply(3,xp[1:-1,2:])) - np.multiply(6,(xp[1:-1,:-2] + xp[1:-1,1:-1] + xp[1:-1,2:])))/6           
+#         dw = (xp[1:-1,2:]-xp[1:-1,:-2])/2    
         return dw
     
     def dxdt(self,x):
         ''' return the derivative of x with respect to time'''   
         xp = np.pad(x,1,mode='edge')      
-#         dt =    (np.multiply(3,(xp[:-2,1:-1])    + np.multiply(2,xp[1:-1,1:-1])    + np.multiply(3,xp[2:,1:-1]))   - np.multiply(6,(xp[:-2,1:-1]    + xp[1:-1,1:-1]    + xp[2:,1:-1])))/(*6 )        
-        dt = (xp[2:,1:-1]-xp[:-2,1:-1])/(2)         
+        dt = (np.multiply(3,(xp[:-2,1:-1]) + np.multiply(2,xp[1:-1,1:-1]) + np.multiply(3,xp[2:,1:-1])) - np.multiply(6,(xp[:-2,1:-1] + xp[1:-1,1:-1] + xp[2:,1:-1])))/6         
+#         dt = (xp[2:,1:-1]-xp[:-2,1:-1])/(2)         
 
         return dt
             
@@ -146,8 +156,9 @@ class PGHI(object):
                 m is the frequency step
                 measure: radians per sample           
         '''
-        N,a,M,M2 = magnitude.shape[0],self.a_a,self.M,self.M2  
+        N,M,M2 = magnitude.shape[0],self.M,self.M2  
         wbin = 2*np.pi/self.M
+        a_a = self.a_a     
  
         # debugging
         if self.plt.verbose:
@@ -157,24 +168,18 @@ class PGHI(object):
             except:
                 original_phase = None     
             self.q_errors=[]
-        
-  
-        
-        from scipy import ndimage
-
-#         startpoints = ndimage.maximum_position(magnitude, labeled, range(nr_objects+1))[1:] 
-        
+       
         logs = np.log(magnitude+1e-50)  
 
         # alternative
-#         fmul = self.lambdasqr*wbin/self.a_a
+#         fmul = self.lambdasqr*wbin/a
 
-        fmul = self.gamma/(a * M)
-        tgradplus = (2*np.pi*a/M)*np.arange(M2)
+        fmul = self.gamma/(a_a * M)
+        tgradplus = (2*np.pi*a_a/M)*np.arange(M2)
         tgrad = self.dxdw(logs)/fmul + tgradplus
         
         fgradplus =    np.pi 
-        fgrad = -fmul*self.dxdt(logs) + fgradplus        
+        fgrad = - fmul*self.dxdt(logs) + fgradplus        
           
         dphaseNE =  tgrad  + fgrad 
         dphaseSE =  tgrad - fgrad  
@@ -217,7 +222,7 @@ class PGHI(object):
                     n,m = s[1],s[2]
                     if active_padded[(n+1), m+2]: # North             
                         active_padded[(n+1), m+2]=False # padded is 1 indexed                               
-                        phase[n, m+1]=  phase[n,  m] + (fgrad[n,  m] + fgrad[n, m+1])/2 
+                        phase[n, m+1]=  phase[n,  m] +(fgrad[n,  m] + fgrad[n, m+1])/2 
                         heapq.heappush(h, (-magnitude[n, m+1],n,m+1)) 
                         if self.plt.verbose and self.debug_count <= 2000 : 
                             self.debugInfo(n, m+1, n, m, phase, original_phase)
@@ -231,31 +236,31 @@ class PGHI(object):
                                                 
                     if active_padded[(n+2), m+1]:  # East 
                         active_padded[(n+2), m+1]=False # padded is 1 indexed                          
-                        phase[(n+1), m]=  phase[n,  m] + (tgrad[n,  m] + tgrad[(n+1), m])/2 
+                        phase[(n+1), m]=  phase[n,  m] + self.speed*(tgrad[n,  m] + tgrad[(n+1), m])/2 
                         heapq.heappush(h, (-magnitude[(n+1), m], n+1,m))   
                         if self.plt.verbose and self.debug_count <= 2000 : 
                             self.debugInfo(n+1, m, n, m, phase, original_phase)                    
                                                        
                     if active_padded[n, m+1]: # West            
                         active_padded[n, m+1]=False # padded is 1 indexed                             
-                        phase[(n-1), m]=  phase[n,  m] - (tgrad[n,  m] + tgrad[(n-1), m])/2 
+                        phase[(n-1), m]=  phase[n,  m] - self.speed*(tgrad[n,  m] + tgrad[(n-1), m])/2 
                         heapq.heappush(h, (-magnitude[(n-1), m],n-1,m))
                         if self.plt.verbose and self.debug_count <= 2000 : 
                             self.debugInfo(n-1, m, n, m, phase, original_phase)               
         
         if self.plt.verbose:
-            if original_phase is not None: 
-                self.plt.plot_3d('Phase original', [original_phase], mask=mask,startpoints=startpoints)          
-                self.plt.plot_3d('Phase original, Phase estimated', [(original_phase) %(2*np.pi), ( phase) %(2*np.pi)], mask=mask, startpoints=startpoints)   
-                print (original_phase.shape, phase.shape)
-                self.plt.colorgram('Phase original minus Phase estimated', np.abs((original_phase) %(2*np.pi) -( phase) %(2*np.pi)), mask=mask, startpoints=startpoints)                      
-                self.plt.quiver('phase errors', self.q_errors, startpoints= startpoints)               
             nprocessed = np.sum(np.where(mask,1,0))                           
             self.logprint ('magnitudes processed above threshold tolerance={}, magnitudes rejected below threshold tolerance={}'.format(nprocessed, magnitude.size-nprocessed) ) 
             self.plt.plot_3d('magnitude', [magnitude], mask=mask, startpoints=startpoints)             
             self.plt.plot_3d('fgrad',[fgrad], mask=mask, startpoints=startpoints)
-            self.plt.plot_3d('tgrad',[tgrad], mask=mask, startpoints=startpoints)                   
-            self.plt.plot_3d('Phase estimated', [phase], mask=mask,startpoints=startpoints)                         
+            self.plt.plot_3d('tgrad',[tgrad], mask=mask, startpoints=startpoints)                 
+            self.plt.plot_3d('Phase estimated', [phase], mask=mask,startpoints=startpoints)              
+            if original_phase is not None: 
+                self.plt.plot_3d('Phase original', [original_phase], mask=mask,startpoints=startpoints)          
+                self.plt.plot_3d('Phase original, Phase estimated', [(original_phase) %(2*np.pi), ( phase) %(2*np.pi)], mask=mask, startpoints=startpoints)   
+                self.plt.colorgram('Phase original minus Phase estimated', np.abs((original_phase) %(2*np.pi) -( phase) %(2*np.pi)), mask=mask, startpoints=startpoints)                      
+                self.plt.quiver('phase errors', self.q_errors, startpoints= startpoints)               
+                             
             
         return phase
     
@@ -294,7 +299,7 @@ class PGHI(object):
     def complex_to_magphase(self, corig ):
         return  np.absolute(corig),np.angle(corig)     
 
-    def signal_to_frames(self, s):   # applies window function, g
+    def signal_to_frames(self, s):   # applies window function, g        
         self.plt.signal_to_file(s , 'signal_in' )
         self.plt.spectrogram(s,'spectrogram signal in')        
         L = s.shape[0] - self.M
@@ -303,22 +308,24 @@ class PGHI(object):
     
     def complex_frames_to_signal(self, complex_frames): 
         M2 = complex_frames.shape[1]
-        N = complex_frames.shape[0]      
+        N = complex_frames.shape[0]  
+        M = self.M    
+        a_s = self.a_s
         
         vr=np.fft.irfft(complex_frames)         
-        sig = np.zeros((N*self.a_a+self.M))
+        sig = np.zeros((N*a_s+self.M))
         cum_waveforms=[]     
         n1 = 15
         n2 = 25
-        for k in range(N):
-            vs = vr[k]*self.gsynth
-            if self.verbose and k >= n1 and k < n2:
-                vout = np.zeros(((n2-n1)*self.a_a+self.M))
-                n = (k-n1)*self.a_a
-                vout[n:n+self.M] = vs
+        for n in range(N):
+            vs = vr[n]*self.gsynth
+            if self.verbose and n >= n1 and n < n2:
+                vout = np.zeros(((n2-n1)*a_s+M))
+                na = (n-n1)*a_s
+                vout[na:na+M] = vs
                 cum_waveforms.append(vout)               
-            sig[k*self.a_a: k*self.a_a+self.M] += vs
-#         cum_waveforms.append(sig[n1*self.a_a:n2*self.a_a+self.M])
+            sig[n*a_s: n*a_s+M] += vs
+#         cum_waveforms.append(sig[n1*a:n2*a+self.M])
         self.plt.plot_waveforms('Gabor Contributions', cum_waveforms)
         self.plt.signal_to_file(sig , 'signal_out')
         self.plt.spectrogram(sig, 'spectrogram signal out')          
@@ -347,11 +354,17 @@ class PGHI(object):
         saved_verbose = self.setverbose(False)        
         reconstructed_magnitude, _ = self.signal_to_magphase_frames(signal_out)
         self.setverbose(saved_verbose)
-        s1 = self.plt.normalize(magnitude_frames[1:]) # s1 is delayed by 1 frame with respect to s2
-        s2 = self.plt.normalize(reconstructed_magnitude[:-1])
-        self.plt.plot_3d('magnitude_frames, reconstructed_magnitude', [s1[100:110], s2[100:110] ])   
-        E = np.linalg.norm(s2- s1)/np.linalg.norm(s1)    # Frobenius norm
-        self.logprint ("\nFrobenius norm error = {:8.4f} dB".format(20*np.log10(E)))  
+        if magnitude_frames.shape[0]>1 and reconstructed_magnitude.shape[0] >1: 
+            s1 = self.plt.normalize(magnitude_frames[1:]) # s1 is delayed by 1 frame with respect to s2
+            s2 = self.plt.normalize(reconstructed_magnitude[:-1])        
+            minlen = min(s1.shape[0], s2.shape[0])        
+            s1 = s1[:minlen]   
+            s2 = s2[:minlen]             
+    
+            mn = min(minlen,100)-15
+            self.plt.plot_3d('magnitude_frames, reconstructed_magnitude', [s1[mn:mn+10], s2[mn:mn+10] ])   
+            E = np.linalg.norm(s2- s1)/np.linalg.norm(s1)    # Frobenius norm
+            self.logprint ("\nFrobenius norm error = {:8.4f} dB".format(20*np.log10(E)))  
         return signal_out              
   
                                             
