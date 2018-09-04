@@ -21,15 +21,17 @@ class PGHI(object):
     implements the Phase Gradient Heap Integration - PGHI algorithm
     '''
 
-    def __init__(self, redundancy=8, speed=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
+    def __init__(self, redundancy=8, time_scale=1, freq_scale=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
         '''
         Parameters
             redundancy    
                 number of hops per window
-            speed 
+            time_scale 
                 multiplier to lengthen time, higher number is slower output
             freq_scale
-                multiplier to compress frequency
+                tuple low and high fraction of magnitude to extract and 
+                expand to M samples, can be <0 and  1.0
+
             M
                 number of samples in for each FFT calculation
                 measure: samples               
@@ -77,12 +79,12 @@ class PGHI(object):
             g=np.array(signal.windows.gaussian(2*gl+1, lambda_*2, sym=False), dtype = dtype)[1:2*gl+1:2]
                  
 
-        self.redundancy,self.speed,self.M,self.tol,self.lambdasqr,self.g,self.gl,h, self.pre_title,self.verbose,self.Fs, self.gamma = redundancy, speed,  M,tol,lambdasqr,g,gl,h,pre_title,verbose,Fs, gamma
+        self.redundancy,self.time_scale,self.freq_scale,self.M,self.tol,self.lambdasqr,self.g,self.gl,h, self.pre_title,self.verbose,self.Fs, self.gamma = redundancy,time_scale,freq_scale, M,tol,lambdasqr,g,gl,h,pre_title,verbose,Fs, gamma
 
         self.M2 = int(self.M/2) + 1    
    
         self.a_s =  int(self.M/redundancy)   
-        self.a_a = int(self.a_s/speed)       
+        self.a_a = int(self.a_s/time_scale)       
                       
         self.corig = None
         self.plt = pghi_plot.Pghi_Plot( show_plots = show_plots,  show_frames = show_frames, pre_title=pre_title)    
@@ -98,7 +100,8 @@ class PGHI(object):
         self.logprint('h, window height at edges = {} relative to max height'.format(h))            
         self.logprint('fft bins = {}'.format(self.M2))                                    
         self.logprint ('redundancy = {}'.format(redundancy ))  
-        self.logprint ('speed = {}'.format(speed )) 
+        self.logprint ('time_scale = {}'.format(time_scale )) 
+        self.logprint ('freq_scale = {}'.format(freq_scale ))          
         self.plt.plot_waveforms("Window Analysis", [self.g])         
 
         denom = 0    # calculate the synthesis window 
@@ -156,15 +159,17 @@ class PGHI(object):
                 m is the frequency step
                 measure: radians per sample           
         '''
-        N,M,M2 = magnitude.shape[0],self.M,self.M2  
+#         magnitude = self.magmodify(magnitude)
+       
+        N = magnitude.shape[0]
+        M2, M, a_a = self.M2, self.M, self.a_a               
         wbin = 2*np.pi/self.M
-        a_a = self.a_a     
- 
         # debugging
         if self.plt.verbose:
             self.debug_count=0
             try:              
-                original_phase = np.angle(self.corig_frames)                      
+                original_phase = np.angle(self.corig_frames)     
+#                 original_phase = self.magmodify(original_phase)                                 
             except:
                 original_phase = None     
             self.q_errors=[]
@@ -236,14 +241,14 @@ class PGHI(object):
                                                 
                     if active_padded[(n+2), m+1]:  # East 
                         active_padded[(n+2), m+1]=False # padded is 1 indexed                          
-                        phase[(n+1), m]=  phase[n,  m] + self.speed*(tgrad[n,  m] + tgrad[(n+1), m])/2 
+                        phase[(n+1), m]=  phase[n,  m] + self.time_scale*(tgrad[n,  m] + tgrad[(n+1), m])/2 
                         heapq.heappush(h, (-magnitude[(n+1), m], n+1,m))   
                         if self.plt.verbose and self.debug_count <= 2000 : 
                             self.debugInfo(n+1, m, n, m, phase, original_phase)                    
                                                        
                     if active_padded[n, m+1]: # West            
                         active_padded[n, m+1]=False # padded is 1 indexed                             
-                        phase[(n-1), m]=  phase[n,  m] - self.speed*(tgrad[n,  m] + tgrad[(n-1), m])/2 
+                        phase[(n-1), m]=  phase[n,  m] - self.time_scale*(tgrad[n,  m] + tgrad[(n-1), m])/2 
                         heapq.heappush(h, (-magnitude[(n-1), m],n-1,m))
                         if self.plt.verbose and self.debug_count <= 2000 : 
                             self.debugInfo(n-1, m, n, m, phase, original_phase)               
@@ -263,6 +268,66 @@ class PGHI(object):
                              
             
         return phase
+    
+#     def magmodify(self, magnitude):
+#         ''' 
+#             modify the FFT magnitude coefficients to translate and scale the
+#                 frequency
+#                 parameter:
+#                     magnitude
+#                         np.array the absolute values of the FFT coefficients
+#                 return
+#                     magnitude
+#                         np.array 
+#         '''
+# 
+#         oldMs = np.linspace(0, self.freq_scale*self.M2, self.M2,endpoint=False)
+#         
+#         magnitude = np.rollaxis(magnitude, 1)
+#         newmag = np.empty_like(magnitude)
+#         for m,v in enumerate(oldMs):
+#             oldMhigh = min(self.M2-1, int(np.ceil(v)))
+#             oldMlow = max(0,int(np.floor(v)))
+#             dv = v-oldMlow
+#             assert oldMhigh >=0 and oldMhigh < self.M2
+#             assert oldMlow >=0 and oldMlow < self.M2            
+#             newmag[m]= (1-dv)*magnitude[oldMlow] + dv*magnitude[oldMhigh]
+# #             print (m)
+# #             assert np.all(np.where(newmag[m] >=0))
+#         assert not np.any(np.isnan(newmag))
+#         return np.rollaxis(newmag,1)
+            
+    def sigstretch(self, samples):
+        ''' 
+            modify the FFT magnitude coefficients to translate and scale the
+                frequency
+                parameter:
+                    magnitude
+                        np.array the absolute values of the FFT coefficients
+                return
+                    magnitude
+                        np.array 
+        '''
+        if self.freq_scale ==1:
+            return samples
+        
+        newMs = np.linspace(0, samples.size, self.freq_scale*samples.size, endpoint=False)
+        newsig = np.empty_like(newMs)
+        
+        if self.freq_scale < 1 :
+            lowpassfir =  signal.firwin(32, .9*self.freq_scale)
+            samples = np.convolve(lowpassfir, samples, mode='same') 
+        
+        for m,v in enumerate(newMs):
+            oldMhigh = min(samples.size-1, int(np.ceil(v)))
+            oldMlow = max(0,int(np.floor(v)))
+            dv = v-oldMlow
+            assert oldMhigh >=0 and oldMhigh < samples.size
+            assert oldMlow >=0 and oldMlow < samples.size            
+            newsig[m]= (1-dv)*samples[oldMlow] + dv*samples[oldMhigh]
+#             print (m)
+#             assert np.all(np.where(newmag[m] >=0))
+        return newsig
     
     def debugInfo(self, n1, m1, n0, m0, phase, original_phase):  
         dif = (phase[n1,m1] - phase[n0,m0]) %(2*np.pi)
@@ -347,10 +412,15 @@ class PGHI(object):
             return:
                  reconstructed signal
         '''
-        magnitude_frames, _ = self.signal_to_magphase_frames(signal_in)
+        self.plt.signal_to_file(signal_in , 'signal_in_before_stretch' )        
+        self.plt.spectrogram(signal_in,'spectrogram signal_in_before_stretch in')            
+        s= self.sigstretch(signal_in)        
+        magnitude_frames, _ = self.signal_to_magphase_frames(s)
         phase_estimated_frames = self.magnitude_to_phase_estimate(magnitude_frames)
+        
         signal_out = self.magphase_frames_to_signal(magnitude_frames, phase_estimated_frames)
         self.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])
+        
         saved_verbose = self.setverbose(False)        
         reconstructed_magnitude, _ = self.signal_to_magphase_frames(signal_out)
         self.setverbose(saved_verbose)
@@ -365,7 +435,8 @@ class PGHI(object):
             self.plt.plot_3d('magnitude_frames, reconstructed_magnitude', [s1[mn:mn+10], s2[mn:mn+10] ])   
             E = np.linalg.norm(s2- s1)/np.linalg.norm(s1)    # Frobenius norm
             self.logprint ("\nFrobenius norm error = {:8.4f} dB".format(20*np.log10(E)))  
-        return signal_out              
+        return signal_out
+             
   
                                             
 

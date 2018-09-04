@@ -150,16 +150,17 @@ class Pghi_Plot(object):
             else:
                 sn=3  
             ax.scatter(xs, ys, zs, s=sn, color = self.colors[(i+1)%len(self.colors)]) 
-        mint = min(xs)
-        maxt = max(xs)
-        minf = min(ys)
-        maxf = max(ys)
-        if startpoints is not None:
-            for stpt in startpoints:                
-                n = stpt[0] 
-                m = stpt[1]
-                if n >= mint and n <= maxt and m >= minf and m <= maxf:
-                    ax.scatter([n ],[m ], [s[n,m]], s=30, color = self.colors[0])
+        if xs.shape[0] > 0:
+            mint = min(xs)
+            maxt = max(xs)
+            minf = min(ys)
+            maxf = max(ys)
+            if startpoints is not None:
+                for stpt in startpoints:                
+                    n = stpt[0] 
+                    m = stpt[1]
+                    if n >= mint and n <= maxt and m >= minf and m <= maxf:
+                        ax.scatter([n ],[m ], [s[n,m]], s=30, color = self.colors[0])
         ax.yaxis.set_major_formatter(StrMethodFormatter('{x:.0f}'))
         ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.0f}'))
         ax.zaxis.set_major_formatter(StrMethodFormatter('{x:.2e}'))            
@@ -206,8 +207,10 @@ class Pghi_Plot(object):
         channels=sig.shape[0]
         print('saving signal to file: {}'.format(filename))
         sig = (self.normalize(sig))*(2**15-1)    
-        assert np.max(sig) < 2**15
-        assert np.min(sig) >= -2**15         
+        if np.max(sig) >= 2**15:
+            print (np.argmax(sig), np.max(sig))
+        if np.min(sig) < -2**15 :
+            print (np.argmin(sig), np.min(sig))              
         sig = np.array(sig, dtype=np.int16)        
         sig = np.rollaxis(sig, 1)
         sig = sig.flatten()
