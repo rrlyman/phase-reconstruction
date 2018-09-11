@@ -14,6 +14,7 @@ import scipy.signal as signal
 import pghi_plot
 from scipy import ndimage
 
+
 dtype = np.float64
 
 class PGHI(object):
@@ -82,9 +83,14 @@ class PGHI(object):
    
         self.a_s =  int(self.M/redundancy)   
         self.a_a = int(self.a_s/time_scale)       
-                      
+        self.magnitude =np.zeros((3,self.M2))
+        self.phase =np.zeros((3,self.M2))
+        self.fgrad =np.zeros((3,self.M2))
+        self.tgrad =np.zeros((3,self.M2))
+        self.logs =np.zeros((3,self.M2))                                
+        self.original_phase = np.zeros((3,self.M2))                        
         self.corig = None
-        self.plt = pghi_plot.Pghi_Plot( show_plots = show_plots,  show_frames = show_frames, pre_title=pre_title)    
+        self.plt = pghi_plot.Pghi_Plot( show_plots = show_plots,  show_frames = show_frames, pre_title=pre_title, logfile='log_rtpghi.txt')    
            
         self.setverbose(verbose)
         if lambdasqr is None: self.logprint('parameter error: must supply lambdasqr and g')            
@@ -131,18 +137,57 @@ class PGHI(object):
         ''' return the derivative of x with respect to frequency'''
         xp = np.pad(x,1,mode='edge')
 #         dw = (np.multiply(3,(xp[1:-1,:-2]) + np.multiply(2,xp[1:-1,1:-1]) + np.multiply(3,xp[1:-1,2:])) - np.multiply(6,(xp[1:-1,:-2] + xp[1:-1,1:-1] + xp[1:-1,2:])))/6           
-        dw = (xp[1:-1,2:]-xp[1:-1,:-2])/2    
+        dw = (xp[2:]-xp[:-2])/2    
         return dw
     
     def dxdt(self,x):
         ''' return the derivative of x with respect to time'''   
         xp = np.pad(x,1,mode='edge')      
 #         dt = (np.multiply(3,(xp[:-2,1:-1]) + np.multiply(2,xp[1:-1,1:-1]) + np.multiply(3,xp[2:,1:-1])) - np.multiply(6,(xp[:-2,1:-1] + xp[1:-1,1:-1] + xp[2:,1:-1])))/6         
-        dt = (xp[2:,1:-1]-xp[:-2,1:-1])/(2)         
+        dt = (xp[1,1:-1]-xp[1,1:-1])/(2)         
 
         return dt
+    
+    def magnitude_to_phase_estimate(self, magnitude):     
+        original_phase = np.zeros_like(magnitude)   
+        if self.plt.verbose:         # for debugging
+            self.debug_count=0
+            try:              
+                original_phase = np.angle(self.corig_frames)                                      
+            except:
+                pass     
+            self.q_errors=[]        
+        phase, fgrad, tgrad = [],[],[]
+        
+        for n in range(magnitude.shape[0]):  
+#             self.mask = np.roll(self.mask,-1,axis=0)   
+#             self.mask[2] = magnitude[n] > (self.tol*np.max(magnitude[n]))   
+#             print('STEP')            
+            p, f, t = self.magnitude_to_phase_estimatex(magnitude[n], original_phase[n])
+            phase.append(p)
+            fgrad.append(f)
+            tgrad.append(t)      
+         
+        mask = magnitude > (self.tol*np.max(magnitude) ) 
+        phase = np.stack(phase)
+        tgrad = np.stack(tgrad)
+        fgrad = np.stack(fgrad)
+
+        if self.plt.verbose:
+            nprocessed = np.sum(np.where(mask,1,0))                           
+            self.logprint ('magnitudes processed above threshold tolerance={}, magnitudes rejected below threshold tolerance={}'.format(nprocessed, magnitude.size-nprocessed) ) 
+            self.plt.plot_3d('magnitude', [magnitude], mask=mask)             
+            self.plt.plot_3d('fgrad',[fgrad], mask=mask)
+            self.plt.plot_3d('tgrad',[tgrad], mask=mask)                 
+            self.plt.plot_3d('Phase estimated', [phase], mask=mask)              
+            if original_phase is not None: 
+                self.plt.plot_3d('Phase original', [original_phase], mask=mask)          
+                self.plt.plot_3d('Phase original, Phase estimated', [(original_phase) %(2*np.pi), ( phase) %(2*np.pi)], mask=mask)   
+                self.plt.colorgram('Phase original minus Phase estimated', np.abs((original_phase) %(2*np.pi) -( phase) %(2*np.pi)), mask=mask)                      
+                self.plt.quiver('phase errors', self.q_errors)               
+        return phase
             
-    def magnitude_to_phase_estimate(self, magnitude):  
+    def magnitude_to_phase_estimatex(self, magnitude, original_phase):  
         ''' estimate the phase frames from the magnitude
         parameter:
             magnitude
@@ -160,107 +205,59 @@ class PGHI(object):
         N = magnitude.shape[0]
         M2, M, a_a = self.M2, self.M, self.a_a               
         wbin = 2*np.pi/self.M
-
-        if self.plt.verbose:         # for debugging
-            self.debug_count=0
-            try:              
-                original_phase = np.angle(self.corig_frames)                                      
-            except:
-                original_phase = None     
-            self.q_errors=[]
-       
-        logs = np.log(magnitude+1e-50)  
-
+        self.magnitude = np.roll(self.magnitude,-1,axis=0)
+        self.phase = np.roll(self.phase,-1,axis=0)
+        self.fgrad = np.roll(self.fgrad,-1,axis=0)
+        self.tgrad = np.roll(self.tgrad,-1,axis=0)
+        self.logs = np.roll(self.logs,-1,axis=0)    
+        self.original_phase = np.roll(self.original_phase,-1,axis=0)           
+        self.magnitude[2] = magnitude
+        self.original_phase[2] = original_phase        
+        self.logs[2] = np.log(magnitude + 1e-50)
+                                
         # alternative
 #         fmul = self.lambdasqr*wbin/a
 
         fmul = self.gamma/(a_a * M)
-        tgradplus = (2*np.pi*a_a/M)*np.arange(M2)
-        tgrad = self.dxdw(logs)/fmul + tgradplus
+        self.tgradplus = (2*np.pi*a_a/M)*np.arange(M2)
+        self.tgrad[2] = self.dxdw(self.logs[2])/fmul + self.tgradplus
         
-        fgradplus =    np.pi 
-        fgrad = - fmul*self.dxdt(logs) + fgradplus        
-          
-        dphaseNE =  tgrad  + fgrad 
-        dphaseSE =  tgrad - fgrad  
-       
-        phase = np.random.random_sample(magnitude.shape)*2*np.pi       
-      
-#         #add known phase borders to the heap
-#         for n in rangen: 
-#             if active_padded[n+1,1]:
-#                 heapq.heappush(h, (-magnitude[n,0], n, 0))     
-#             if active_padded[n+1,-1]:
-#                 heapq.heappush(h, (-magnitude[n,self.M2-1], n, self.M2-1)) 
-#         for m in range(self.M2): 
-#             if active_padded[1,m+1]:
-#                 heapq.heappush(h, (-magnitude[0,m], 0, m))     
-#             if active_padded[-1,m+1]:
-#                 heapq.heappush(h, (-magnitude[N-1,m], N-1, m))  
-             # small signal filter
-        mask = magnitude > (self.tol*np.max(magnitude) )    
-        active_padded = np.pad(mask,1,mode='constant',constant_values=False)  
-            
-        while np.any(active_padded):  
-             
-            labeled, nr_objects = ndimage.label(active_padded[1:N+1,1:M2+1]) 
-            self.logprint("number of islands = {}".format(nr_objects) ) 
-            startpoints = ndimage.maximum_position(magnitude*active_padded[1:N+1,1:M2+1], labeled, range(nr_objects+1))[1:]                    
-            for startpoint in startpoints:
-                h=[]                    
-                n0,m0 = startpoint
-                phase[n0,m0] = 0
-                heapq.heappush(h, (-magnitude[n0,m0],n0,m0)) 
-                active_padded[n0+1,m0+1]=False
-                if self.plt.verbose: 
-                    self.logprint('Processing Island: start point=[{},{}]'.format(n0,m0))
-                    #  For debugging purposes, align the original phase with the phase generated by this algorithm.
-                    if original_phase is not None:
-                        original_phase -= original_phase[n0,m0] 
-                while len(h) > 0:
-                    s=heapq.heappop(h)            
-                    n,m = s[1],s[2]
-                    if active_padded[(n+1), m+2]: # North             
-                        active_padded[(n+1), m+2]=False # padded is 1 indexed                               
-                        phase[n, m+1]=  phase[n,  m] +(fgrad[n,  m] + fgrad[n, m+1])/2 
-                        heapq.heappush(h, (-magnitude[n, m+1],n,m+1)) 
-                        if self.plt.verbose and self.debug_count <= 2000 : 
-                            self.debugInfo(n, m+1, n, m, phase, original_phase)
-                                                           
-                    if active_padded[(n+1), m]: # South 
-                        active_padded[(n+1), m]=False # padded is 1 indexed                             
-                        phase[n, m-1]=  phase[n,  m] - (fgrad[n,  m] + fgrad[n, m-1])/2 
-                        heapq.heappush(h, (-magnitude[n, m-1],n,m-1))    
-                        if self.plt.verbose and self.debug_count <= 2000 : 
-                            self.debugInfo(n, m-1, n, m, phase, original_phase)                    
-                                                
-                    if active_padded[(n+2), m+1]:  # East 
-                        active_padded[(n+2), m+1]=False # padded is 1 indexed                          
-                        phase[(n+1), m]=  phase[n,  m] + self.time_scale*(tgrad[n,  m] + tgrad[(n+1), m])/2 
-                        heapq.heappush(h, (-magnitude[(n+1), m], n+1,m))   
-                        if self.plt.verbose and self.debug_count <= 2000 : 
-                            self.debugInfo(n+1, m, n, m, phase, original_phase)                    
-                                                       
-                    if active_padded[n, m+1]: # West            
-                        active_padded[n, m+1]=False # padded is 1 indexed                             
-                        phase[(n-1), m]=  phase[n,  m] - self.time_scale*(tgrad[n,  m] + tgrad[(n-1), m])/2 
-                        heapq.heappush(h, (-magnitude[(n-1), m],n-1,m))
-                        if self.plt.verbose and self.debug_count <= 2000 : 
-                            self.debugInfo(n-1, m, n, m, phase, original_phase)               
-        
-        if self.plt.verbose:
-            nprocessed = np.sum(np.where(mask,1,0))                           
-            self.logprint ('magnitudes processed above threshold tolerance={}, magnitudes rejected below threshold tolerance={}'.format(nprocessed, magnitude.size-nprocessed) ) 
-            self.plt.plot_3d('magnitude', [magnitude], mask=mask, startpoints=startpoints)             
-            self.plt.plot_3d('fgrad',[fgrad], mask=mask, startpoints=startpoints)
-            self.plt.plot_3d('tgrad',[tgrad], mask=mask, startpoints=startpoints)                 
-            self.plt.plot_3d('Phase estimated', [phase], mask=mask,startpoints=startpoints)              
-            if original_phase is not None: 
-                self.plt.plot_3d('Phase original', [original_phase], mask=mask,startpoints=startpoints)          
-                self.plt.plot_3d('Phase original, Phase estimated', [(original_phase) %(2*np.pi), ( phase) %(2*np.pi)], mask=mask, startpoints=startpoints)   
-                self.plt.colorgram('Phase original minus Phase estimated', np.abs((original_phase) %(2*np.pi) -( phase) %(2*np.pi)), mask=mask, startpoints=startpoints)                      
-                self.plt.quiver('phase errors', self.q_errors, startpoints= startpoints)                                                   
-        return phase
+        self.fgradplus =    np.pi 
+        self.fgrad[1] = - fmul*self.dxdt(self.logs) + self.fgradplus        
+   
+        h=[]    
+
+        mask = np.ones_like(self.magnitude[0])
+
+        n0 = 0
+        for m0 in range(M2):                                  
+            heapq.heappush(h, (-self.magnitude[n0, m0],n0,m0)) 
+
+        while len(h) > 0:
+            s=heapq.heappop(h)            
+            n,m = s[1],s[2]
+            if n==1 and m < M2-1 and mask[m+1]: # North             
+                mask[m+1]=False # padded is 1 indexed                               
+                self.phase[n, m+1]=  self.phase[n,  m] +(self.fgrad[n,  m] + self.fgrad[n, m+1])/2 
+                heapq.heappush(h, (-self.magnitude[n,m+1],n,m+1)) 
+                if self.plt.verbose and self.debug_count <= 2000 : 
+                    self.debugInfo(n, m+1, n, m, self.phase, self.original_phase)
+                                                   
+            if n == 1 and m > 0 and mask[m-1]: # South 
+                mask[m-1]=False # padded is 1 indexed                             
+                self.phase[n, m-1]=  self.phase[n,  m] - (self.fgrad[n,  m] + self.fgrad[n, m-1])/2 
+                heapq.heappush(h, (-self.magnitude[n,m-1],n,m-1))    
+                if self.plt.verbose and self.debug_count <= 2000 : 
+                    self.debugInfo(n, m-1, n, m, self.phase, self.original_phase)                    
+                                        
+            if n==0 and mask[m]:  # East 
+                mask[m]=False # padded is 1 indexed                          
+                self.phase[(n+1), m]=  self.phase[n,  m] + self.time_scale*(self.tgrad[n,  m] + self.tgrad[(n+1), m])/2 
+                heapq.heappush(h, (-self.magnitude[n+1,m], 1, m))   
+                if self.plt.verbose and self.debug_count <= 2000 : 
+                    self.debugInfo(n+1, m, n, m, self.phase, self.original_phase)                            
+                                     
+        return self.phase[0], self.fgrad[0], self.tgrad[0]
     
             
     def sigstretch(self, samples):

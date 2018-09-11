@@ -22,7 +22,7 @@ class Pghi_Plot(object):
     classdocs
     '''
 
-    def __init__(self, show_plots=True, show_frames = 5, pre_title='', soundout = './soundout/', plotdir='./pghi_plots/', Fs=44100, verbose=True):
+    def __init__(self, show_plots=True, show_frames = 5, pre_title='', soundout = './soundout/', plotdir='./pghi_plots/', Fs=44100, verbose=True, logfile='log.txt'):
         '''
         parameters:
             show_plots
@@ -33,7 +33,7 @@ class Pghi_Plot(object):
                 string: pre_titleription to be prepended to each plot title
         '''
         
-        self.show_plots,self.show_frames,self.pre_title,self.soundout,self.plotdir,self.Fs,self.verbose = show_plots,show_frames,pre_title,soundout,plotdir,Fs,verbose
+        self.show_plots,self.show_frames,self.pre_title,self.soundout,self.plotdir,self.Fs,self.verbose,self.logfile = show_plots,show_frames,pre_title,soundout,plotdir,Fs,verbose, logfile
         self.colors =  ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'tab:orange', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive']
         try:
             os.mkdir(plotdir)    
@@ -45,7 +45,8 @@ class Pghi_Plot(object):
             pass                
         self.openfile = ''
         self.mp3List = glob.glob('./*.mp3',recursive=False) + glob.glob('./*.wav',recursive=False)
-        self.fileCount=0          
+        self.fileCount=0       
+        self.logprint('logfile={}'.format(logfile))   
         
     def save_plots(self, title):  
         file =  self.plotdir + title +  '.png' 
@@ -248,6 +249,7 @@ class Pghi_Plot(object):
                
     def quiver(self, title, qtuples, mask=None, startpoints=None):   
         if not self.verbose: return
+        if len(qtuples)==0: return
         title = self.pre_title + file_sep + title
         qtuples = self.limit(qtuples)
         figax = plt.figure()
@@ -277,8 +279,8 @@ class Pghi_Plot(object):
          
     def logprint(self, txt):   
         if self.verbose:
-            if self.openfile != './pghi_plots/' + 'log.txt' :
-                self.openfile = './pghi_plots/' + 'log.txt' 
+            if self.openfile != './pghi_plots/' + self.logfile :
+                self.openfile = './pghi_plots/' + self.logfile
                 self.file = open(self.openfile, mode='w')
             print(txt, file=self.file, flush=True)
         print(txt)

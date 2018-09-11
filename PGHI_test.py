@@ -10,7 +10,8 @@ Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 '''
 
 import numpy as np
-import pghi
+import rtpghi as rtpghi
+import pghi as pghi
 import scipy.signal as signal
 import time
 
@@ -56,8 +57,10 @@ def audio_test():
             p.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])
             stereo.append( signal_out)
         p.test( song_title)
+        saved = p.setverbose(True)          
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
         p.logprint('elapsed time = {:7.1f} seconds\n'.format(time.clock()- etime))
+        p.setverbose(saved)        
         
 def warble_test():
     f1 = 32*p.Fs/p.M # cycles per second
@@ -74,9 +77,9 @@ def warble_test():
     p.logprint ('duration of sound = {0:10.7} seconds'.format(signal_in.shape[0]/p.Fs)) 
     p.signal_to_signal(signal_in)  
 
-scale_up = .75
+scale_up = 1
 ############################  program start ###############################
-p = pghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
+p = pghi.PGHI(tol = 1e-6, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
 
 
 # gl = 2048
@@ -84,10 +87,25 @@ p = pghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=s
 # gamma =gl**2*.25645
 # p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
 # p.setverbose(False)
-warble_test()
-pulse_test()
-sine_test()
-sweep_test()
+# warble_test()
+# pulse_test()
+# sine_test()
+# sweep_test()
+p.setverbose(False)    
+audio_test()
+
+p = rtpghi.PGHI(tol = 1e-6, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
+
+
+# gl = 2048
+# g = signal.windows.hann(gl)    
+# gamma =gl**2*.25645
+# p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
+# p.setverbose(False)
+# warble_test()
+# pulse_test()
+# sine_test()
+# sweep_test()
 p.setverbose(False)    
 audio_test()
 
