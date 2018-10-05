@@ -21,7 +21,7 @@ class PGHI(object):
     implements the Phase Gradient Heap Integration - PGHI algorithm
     '''
 
-    def __init__(self, redundancy=8, time_scale=1, freq_scale=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
+    def __init__(self, redundancy=8, time_scale=1, freq_scale=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
         '''
         Parameters
             redundancy    
@@ -253,7 +253,9 @@ class PGHI(object):
             self.logprint ('magnitudes processed above threshold tolerance={}, magnitudes rejected below threshold tolerance={}'.format(nprocessed, magnitude.size-nprocessed) ) 
             self.plt.plot_3d('magnitude', [magnitude], mask=mask, startpoints=startpoints)             
             self.plt.plot_3d('fgrad',[fgrad], mask=mask, startpoints=startpoints)
-            self.plt.plot_3d('tgrad',[tgrad], mask=mask, startpoints=startpoints)                 
+            self.plt.plot_3d('tgrad',[tgrad], mask=mask, startpoints=startpoints)       
+            self.plt.plot_3d('self.dxdw(logs) ',[self.dxdw(logs) ], mask=mask, startpoints=startpoints)  
+            self.plt.plot_3d('self.dxdt(logs) ',[self.dxdt(logs) ], mask=mask, startpoints=startpoints)                                            
             self.plt.plot_3d('Phase estimated', [phase], mask=mask,startpoints=startpoints)              
             if original_phase is not None: 
                 self.plt.plot_3d('Phase original', [original_phase], mask=mask,startpoints=startpoints)          
@@ -392,12 +394,11 @@ class PGHI(object):
             s2 = self.plt.normalize(reconstructed_magnitude[:-1])        
             minlen = min(s1.shape[0], s2.shape[0])        
             s1 = s1[:minlen]   
-            s2 = s2[:minlen]             
-    
+            s2 = s2[:minlen]    
             mn = min(minlen,100)-15
+            dif = s2 - s1
+            E = np.sqrt(np.sum(dif*dif)) / np.sqrt(np.sum(s1*s1))   # Frobenius norm            
             self.plt.plot_3d('magnitude_frames, reconstructed_magnitude', [s1[mn:mn+10], s2[mn:mn+10] ])   
-            E = np.linalg.norm(s2- s1)/np.linalg.norm(s1)    # Frobenius norm
-            self.logprint ("\nFrobenius norm error = {:8.4f} dB".format(20*np.log10(E)))  
         return signal_out
              
   

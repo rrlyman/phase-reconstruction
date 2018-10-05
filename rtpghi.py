@@ -22,7 +22,7 @@ class PGHI(object):
     implements the Phase Gradient Heap Integration - PGHI algorithm
     '''
 
-    def __init__(self, redundancy=8, time_scale=1, freq_scale=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, alg='p2015', pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
+    def __init__(self, redundancy=8, time_scale=1, freq_scale=1, M=2048, gl=None, g=None, tol = 1e-6, lambdasqr = None, gamma = None, h = .01, plt=None, pre_title='', show_plots = False,  show_frames = 25, verbose=True, Fs=44100):
         '''
         Parameters
             redundancy    
@@ -149,6 +149,10 @@ class PGHI(object):
         return dt
     
     def magnitude_to_phase_estimate(self, magnitude):     
+        '''
+            run the hop by hop magnitude to phase algorithm through the
+            entire sound sample to produce graphs
+        '''
         original_phase = np.zeros_like(magnitude)   
         if self.plt.verbose:         # for debugging
             self.debug_count=0
@@ -227,8 +231,7 @@ class PGHI(object):
    
         h=[]    
 
-        mask = np.ones_like(self.magnitude[0])
-
+        mask = magnitude > (self.tol*np.max(magnitude) ) 
         n0 = 0
         for m0 in range(M2):                                  
             heapq.heappush(h, (-self.magnitude[n0, m0],n0,m0)) 
@@ -237,21 +240,21 @@ class PGHI(object):
             s=heapq.heappop(h)            
             n,m = s[1],s[2]
             if n==1 and m < M2-1 and mask[m+1]: # North             
-                mask[m+1]=False # padded is 1 indexed                               
+                mask[m+1]=False                               
                 self.phase[n, m+1]=  self.phase[n,  m] +(self.fgrad[n,  m] + self.fgrad[n, m+1])/2 
                 heapq.heappush(h, (-self.magnitude[n,m+1],n,m+1)) 
                 if self.plt.verbose and self.debug_count <= 2000 : 
                     self.debugInfo(n, m+1, n, m, self.phase, self.original_phase)
                                                    
             if n == 1 and m > 0 and mask[m-1]: # South 
-                mask[m-1]=False # padded is 1 indexed                             
+                mask[m-1]=False                             
                 self.phase[n, m-1]=  self.phase[n,  m] - (self.fgrad[n,  m] + self.fgrad[n, m-1])/2 
                 heapq.heappush(h, (-self.magnitude[n,m-1],n,m-1))    
                 if self.plt.verbose and self.debug_count <= 2000 : 
                     self.debugInfo(n, m-1, n, m, self.phase, self.original_phase)                    
                                         
             if n==0 and mask[m]:  # East 
-                mask[m]=False # padded is 1 indexed                          
+                mask[m]=False                         
                 self.phase[(n+1), m]=  self.phase[n,  m] + self.time_scale*(self.tgrad[n,  m] + self.tgrad[(n+1), m])/2 
                 heapq.heappush(h, (-self.magnitude[n+1,m], 1, m))   
                 if self.plt.verbose and self.debug_count <= 2000 : 
@@ -389,12 +392,11 @@ class PGHI(object):
             s2 = self.plt.normalize(reconstructed_magnitude[:-1])        
             minlen = min(s1.shape[0], s2.shape[0])        
             s1 = s1[:minlen]   
-            s2 = s2[:minlen]             
-    
+            s2 = s2[:minlen]               
             mn = min(minlen,100)-15
+            dif = s2 - s1
+            E = np.sqrt(np.sum(dif*dif)) / np.sqrt(np.sum(s1*s1))   # Frobenius norm            
             self.plt.plot_3d('magnitude_frames, reconstructed_magnitude', [s1[mn:mn+10], s2[mn:mn+10] ])   
-            E = np.linalg.norm(s2- s1)/np.linalg.norm(s1)    # Frobenius norm
-            self.logprint ("\nFrobenius norm error = {:8.4f} dB".format(20*np.log10(E)))  
         return signal_out
              
   

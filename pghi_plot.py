@@ -317,7 +317,7 @@ class Pghi_Plot(object):
         samples = np.array(samples,dtype=np.float32)
         samples= np.reshape(samples,(-1,song.channels))      
         samples = np.rollaxis(samples,1)     
-        samples = (self.normalize(samples))
+        samples = self.normalize(samples)
         return filename.split('.')[0], samples
 
                    
