@@ -167,14 +167,14 @@ class Pghi_Plot(object):
         ax.zaxis.set_major_formatter(StrMethodFormatter('{x:.2e}'))            
                        
         for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(fontsize) 
-            tick.label.set_rotation('vertical')
+            tick.label1.set_fontsize(fontsize) 
+            tick.label1.set_rotation('vertical')
         for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(fontsize) 
-            tick.label.set_rotation('vertical') 
+            tick.label1.set_fontsize(fontsize) 
+            tick.label1.set_rotation('vertical') 
         for tick in ax.zaxis.get_major_ticks():
-            tick.label.set_fontsize(fontsize) 
-            tick.label.set_rotation('horizontal')    
+            tick.label1.set_fontsize(fontsize) 
+            tick.label1.set_rotation('horizontal')    
                                                              
         ax.set_zlabel('mag',fontsize=fontsize)   
         ax.set_ylabel('STFT bin',fontsize=fontsize)
