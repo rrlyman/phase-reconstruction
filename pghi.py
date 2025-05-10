@@ -7,6 +7,9 @@ based upon
 Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 
 @author: richard lyman
+
+to run: python3 PGHI_test.py
+
 """
 
 import numpy as np

@@ -7,6 +7,9 @@ based upon
 Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 
 @author: richard
+
+to run: python3 PGHI_test.py
+
 """
 
 # REQUIRES FFMEG TO BE INSTALLED IN THE SYSTEM
@@ -121,7 +124,7 @@ p = pghi.PGHI(
 # gamma =gl**2*.25645
 # p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
 
-# p.setverbose(False)
+p.setverbose(False)
 
 warble_test()
 pulse_test()
@@ -138,7 +141,7 @@ p = rtpghi.PGHI(
     show_plots=False,
     verbose=True,
 )
-# p.setverbose(False)
+p.setverbose(False)
 warble_test()
 pulse_test()
 sine_test()

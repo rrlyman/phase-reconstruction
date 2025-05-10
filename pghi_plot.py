@@ -2,6 +2,9 @@
 Created on Jul 26, 2018
 
 @author: richard
+
+to run: python3 PGHI_test.py
+
 """
 
 import matplotlib.pyplot as plt
@@ -92,6 +95,8 @@ class Pghi_Plot(object):
         self.openfile = ""
         self.mp3List = glob.glob("./*.mp3", recursive=False) + glob.glob(
             "./*.wav", recursive=False
+        )+ glob.glob(
+            "./*.aac", recursive=False
         )
         self.fileCount = 0
         self.logprint("logfile={}".format(logfile))
