@@ -92,7 +92,7 @@ class PGHI(object):
         self.corig = None
         self.plt = pghi_plot.Pghi_Plot( show_plots = show_plots,  show_frames = show_frames, pre_title=pre_title, logfile='log_rtpghi.txt')    
            
-        self.setverbose(verbose)
+        #self.setverbose(verbose)
         if lambdasqr is None: self.logprint('parameter error: must supply lambdasqr and g')            
         self.logprint('a_a(analysis time hop size) = {} samples'.format(self.a_a))   
         self.logprint('a_s(synthesis time hop size) = {} samples'.format(self.a_s)) 
@@ -277,7 +277,7 @@ class PGHI(object):
         if self.freq_scale ==1:
             return samples
         
-        newMs = np.linspace(0, samples.size, self.freq_scale*samples.size, endpoint=False)
+        newMs = np.linspace(0, samples.size, int(self.freq_scale*samples.size), endpoint=False)
         newsig = np.empty_like(newMs)
         
         if self.freq_scale < 1 :

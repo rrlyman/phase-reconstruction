@@ -8,12 +8,13 @@ Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 
 @author: richard
 '''
+# REQUIRES FFMEG TO BE INSTALLED IN THE SYSTEM 
 
 import numpy as np
 import rtpghi as rtpghi
 import pghi as pghi
 import scipy.signal as signal
-import time
+import time as tm
 
 def sine_test():
     f = 10*p.Fs/p.M # fft bin #10
@@ -45,7 +46,7 @@ def sweep_test():
           
 def audio_test():
     for nfile in range(100): # 100 arbitrary file limit
-        etime = time.clock_gettime(0)  
+        etime = tm.time()
         song_title, audio_in = p.plt.get_song()
         if audio_in is None: 
             break          
@@ -60,7 +61,7 @@ def audio_test():
         p.test( song_title)
 #         saved = p.setverbose(True)          
         p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True) 
-        p.logprint('elapsed time = {:8.2f} seconds\n'.format(time.clock_gettime(0)- etime))
+        p.logprint('elapsed time = {:8.2f} seconds\n'.format(tm.time()- etime))
         p.setverbose(saved)        
         
 def warble_test():
@@ -78,7 +79,7 @@ def warble_test():
     p.logprint ('duration of sound = {0:10.7} seconds'.format(signal_in.shape[0]/p.Fs)) 
     p.signal_to_signal(signal_in)  
 
-scale_up = 1
+scale_up = 1.5
 ############################  program start ###############################
 p = pghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
  
@@ -88,22 +89,33 @@ p = pghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=s
 # gamma =gl**2*.25645
 # p = pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
 
-p.setverbose(False)
+#p.setverbose(False)
+
 warble_test()
 pulse_test()
 sine_test()
 sweep_test()
 # p.setverbose(False)    
 audio_test()
+'''
 
-p = rtpghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = True, verbose=True)
-p.setverbose(False)
+
+
+
+
+p = rtpghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
+#p.setverbose(False)
 warble_test()
 pulse_test()
 sine_test()
 sweep_test()
 p.setverbose(False)    
 audio_test()
+
+
+
+'''
+
 
 
      

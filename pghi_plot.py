@@ -10,6 +10,8 @@ import numpy as np
 import os
 import glob
 from pydub import AudioSegment
+#import audio.op as audioop
+#from audioop import AudioSegment
 from matplotlib.ticker import StrMethodFormatter
 from matplotlib.ticker import FormatStrFormatter, MultipleLocator
 
@@ -54,7 +56,7 @@ class Pghi_Plot(object):
         plt.savefig(file,  dpi=300)    
         if self.show_plots:
             figManager = plt.get_current_fig_manager()
-            figManager.window.showMaximized()            
+            #figManager.window.showMaximized()            
             plt.show()             
         else:               
             plt.clf() # savefig does not clear the figure like show does
@@ -304,6 +306,7 @@ class Pghi_Plot(object):
         
         self.fileCount +=1
         try:
+            #file = "Clip Air for the G String.mp3"
             song = AudioSegment.from_mp3(file)
         except:
             self.logprint("song decoding error")
