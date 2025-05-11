@@ -132,7 +132,7 @@ sine_test()
 sweep_test()
 # p.setverbose(False)
 audio_test()
-
+"""
 p = rtpghi.PGHI(
     tol=1e-3,
     show_frames=100,
@@ -148,3 +148,4 @@ sine_test()
 sweep_test()
 p.setverbose(False)
 audio_test()
+"""

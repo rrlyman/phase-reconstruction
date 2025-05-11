@@ -93,10 +93,10 @@ class Pghi_Plot(object):
         except:
             pass
         self.openfile = ""
-        self.mp3List = glob.glob("./*.mp3", recursive=False) + glob.glob(
-            "./*.wav", recursive=False
-        )+ glob.glob(
-            "./*.aac", recursive=False
+        self.songList = (
+            glob.glob("./*.mp3", recursive=False)
+            + glob.glob("./*.wav", recursive=False)
+            + glob.glob("./*.aac", recursive=False)
         )
         self.fileCount = 0
         self.logprint("logfile={}".format(logfile))
@@ -262,9 +262,9 @@ class Pghi_Plot(object):
         if override_verbose == False:
             if not self.verbose:
                 return
-            filename = self.plotdir + self.pre_title + title + ".mp3"
+            filename = self.plotdir + self.pre_title + title + ".aac"
         else:
-            filename = self.soundout + "_" + title + ".mp3"
+            filename = self.soundout + "_" + title + ".aac"
 
         if len(sig.shape) == 1:
             sig = np.reshape(sig, (1, -1))
@@ -282,7 +282,7 @@ class Pghi_Plot(object):
         output_sound = AudioSegment(
             data=sig, sample_width=2, frame_rate=self.Fs, channels=channels
         )
-        output_sound.export(filename, format="mp3")
+        output_sound.export(filename, format="adts")
 
     def plot_3d(self, title, sigs, mask=None, startpoints=None):
         if not self.verbose:
@@ -370,21 +370,21 @@ class Pghi_Plot(object):
             sound_clip shape= (samples, channels) where channels = 2
             sound is normalized in the range -1 to 1
         returns
-            sound_title without the .mp3 extension
+            sound_title without the extension
             sound
                 stereo numpy array (n,samples)
                 where n is the number of channels, i.e. 2 = stereo
         """
-        if self.fileCount >= len(self.mp3List):
+        if self.fileCount >= len(self.songList):
             return None, None
-        file = self.mp3List[self.fileCount]
+        file = self.songList[self.fileCount]
         self.logprint("file={}".format(file))
         _, filename = os.path.split(file)
 
         self.fileCount += 1
         try:
             # file = "Clip Air for the G String.mp3"
-            song = AudioSegment.from_mp3(file)
+            song = AudioSegment.from_file(file)
         except:
             self.logprint("song decoding error")
             return self.get_song()  # try to get next song
