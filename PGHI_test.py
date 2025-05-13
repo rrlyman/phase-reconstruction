@@ -126,26 +126,26 @@ def audio_test():
     """
     for nfile in range(100):  # 100 arbitrary file limit
         etime = tm.time()
+        # algorithm.test_name("audio test " + song_title)
         song_title, audio_in = algorithm.plt.get_song()
         if audio_in is None:
             break
         stereo = []
         for i in range(audio_in.shape[0]):  # channels = 2 for stereo
-            algorithm.test_name(song_title + " ch{}".format(i))
+            algorithm.test_name("audio test " + song_title + " ch{}".format(i))
             signal_in = audio_in[i]
             signal_out = algorithm.signal_to_signal(signal_in)
             algorithm.plt.plot_waveforms(
                 "Signal in, Signal out", [signal_in, signal_out]
             )
             stereo.append(signal_out)
-        saved = algorithm.setverbose(True)
-        algorithm.test_name(song_title)
+        # saved = algorithm.setverbose(True)
         #         saved = algorithm.setverbose(True)
         algorithm.plt.signal_to_file(
             np.stack(stereo), song_title, override_verbose=True
         )
         algorithm.logprint("elapsed time = {:8.2f} seconds\n".format(tm.time() - etime))
-        algorithm.setverbose(saved)
+        # algorithm.setverbose(saved)
 
 
 def warble_test():
@@ -222,13 +222,13 @@ algorithm = pghi.PGHI(
     time_scale=1 / scale_up,
     freq_scale=scale_up,
     show_plots=False,
-    verbose=False,
+    verbose=True,
 )
 
-warble_test()
-pulse_test()
-sine_test()
-sweep_test()
+# warble_test()
+# pulse_test()
+# sine_test()
+# sweep_test()
 audio_test()
 
 algorithm = rtpghi.PGHI(
@@ -237,7 +237,7 @@ algorithm = rtpghi.PGHI(
     time_scale=1 / scale_up,
     freq_scale=scale_up,
     show_plots=False,
-    verbose=False,
+    verbose=True,
 )
 # algorithm.setverbose(True)
 audio_test()

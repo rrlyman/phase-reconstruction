@@ -156,7 +156,7 @@ class PGHI(object):
         self.logprint("redundancy = {}".format(redundancy))
         self.logprint("time_scale = {}".format(time_scale))
         self.logprint("freq_scale = {}".format(freq_scale))
-        self.plt.plot_waveforms("Window Analysis", [self.g])
+        self.plt.plot_waveforms("Window Analysis pghi", [self.g])
 
         denom = 0  # calculate the synthesis window
         self.gsynth = np.zeros_like(self.g, dtype=dtype)
@@ -167,7 +167,7 @@ class PGHI(object):
                 if dl >= 0 and dl < self.M:
                     denom += self.g[dl] ** 2
             self.gsynth[l] = self.g[l] / denom
-        self.plt.plot_waveforms("Window Synthesis", [self.gsynth])
+        self.plt.plot_waveforms("Window Synthesis pghi", [self.gsynth])
 
     def setverbose(self, verbose):
         saved_d = self.plt.verbose
@@ -176,7 +176,7 @@ class PGHI(object):
 
     def test_name(self, testName):
         self.plt.pre_title = testName + str.format(
-            " pghi time_scale_{0:3.2} freq_scale_{1:3.2}",
+            " pghi time_scale_{0:3.2} freq_scale_{1:3.2} ",
             self.time_scale,
             self.freq_scale,
         )

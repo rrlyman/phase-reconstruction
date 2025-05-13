@@ -150,7 +150,7 @@ class Pghi_Plot(object):
     def plot_waveforms(self, title, sigs, fontsize=None):
         if not self.verbose:
             return
-        title = self.pre_title + title
+        # title = self.pre_title + title
         fig = plt.figure()
         plt.title(title)
         plt.ylabel("amplitude", color="b", fontsize=fontsize)
@@ -319,7 +319,7 @@ class Pghi_Plot(object):
             return
         if len(qtuples) == 0:
             return
-        title = self.pre_title + title
+        # title = self.pre_title + title
         qtuples = self.limit(qtuples)
         figax = plt.figure()
         ax = figax.add_subplot(111, projection="3d", elev=45, azim=45)
