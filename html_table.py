@@ -1,3 +1,20 @@
+"""
+Created on Jul 7, 2018
+
+based upon
+
+"A Non-iterative Method for (Re)Construction of Phase from STFT Magnitude"
+Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
+
+@author: richard
+
+to run:
+    python PGHI_test.py
+or
+    python3 PGHI_test.py
+
+"""
+
 import html
 import os
 

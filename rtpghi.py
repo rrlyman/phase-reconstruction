@@ -6,9 +6,12 @@ based upon
 "A Non-iterative Method for (Re)Construction of Phase from STFT Magnitude"
 Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 
-@author: richard lyman
+@author: richard
 
-to run: python3 PGHI_test.py
+to run:
+    python PGHI_test.py
+or
+    python3 PGHI_test.py
 
 """
 

@@ -8,7 +8,10 @@ Zdenek Prusa, Peter Balazs, Peter L. Sondergaard
 
 @author: richard
 
-to run: python3 PGHI_test.py
+to run:
+    python PGHI_test.py
+or
+    python3 PGHI_test.py
 
 """
 
