@@ -22,8 +22,6 @@ import numpy as np
 import os
 import glob
 from pydub import AudioSegment
-import globals
-
 
 # import audio.op as audioop
 # from audioop import AudioSegment
@@ -111,9 +109,7 @@ class Pghi_Plot(object):
         file = "./results/" + self.pre_title + " " + title + ".png"
         print("saving plot to file: " + file)
         plt.savefig(file, dpi=300)
-        globals.table.add_a_row(
-            file_name=file, time_scale=self.time_scale, freq_scale=self.freq_scale
-        )
+
         if self.show_plots:
             figManager = plt.get_current_fig_manager()
             # figManager.window.showMaximized()
@@ -290,9 +286,6 @@ class Pghi_Plot(object):
             data=sig, sample_width=2, frame_rate=self.Fs, channels=channels
         )
         output_sound.export(filename, format="adts")
-        globals.table.add_a_row(
-            file_name=filename, time_scale=self.time_scale, freq_scale=self.freq_scale
-        )
 
     def plot_3d(self, title, sigs, mask=None, startpoints=None):
         if not self.verbose:

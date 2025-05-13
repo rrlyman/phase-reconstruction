@@ -22,7 +22,6 @@ import rtpghi as rtpghi
 import pghi as pghi
 import scipy.signal as signal
 import time as tm
-import globals
 
 
 """
@@ -228,10 +227,10 @@ algorithm = pghi.PGHI(
     verbose=True,
 )
 
-# warble_test()
-# pulse_test()
-# sine_test()
-# sweep_test()
+warble_test()
+pulse_test()
+sine_test()
+sweep_test()
 audio_test()
 
 algorithm = rtpghi.PGHI(
