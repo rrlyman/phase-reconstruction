@@ -217,7 +217,6 @@ def warble_test():
 
 ############################  program start ###############################
 
-
 algorithm = pghi.PGHI(
     tol=1e-3,
     show_frames=100,
@@ -243,7 +242,6 @@ algorithm = rtpghi.PGHI(
 )
 # algorithm.setverbose(True)
 audio_test()
-globals.table.save()
 
 # gl = 2048
 # g = signal.windows.hann(gl)
