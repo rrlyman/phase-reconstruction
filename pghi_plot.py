@@ -14,6 +14,8 @@ import numpy as np
 import os
 import glob
 from pydub import AudioSegment
+import globals
+
 
 # import audio.op as audioop
 # from audioop import AudioSegment
@@ -33,12 +35,11 @@ class Pghi_Plot(object):
         self,
         show_plots=True,
         show_frames=5,
-        pre_title="",
-        soundout="./soundout/",
-        plotdir="./pghi_plots/",
         Fs=44100,
         verbose=True,
         logfile="log.txt",
+        time_scale=1,
+        freq_scale=1,
     ):
         """
         parameters:
@@ -47,28 +48,27 @@ class Pghi_Plot(object):
                 to the disk. Useful for rotating 3D plots with the mouse
                 if False, just save the plot to the disk in the './pghi_plots' directory
             pre_title
-                string: pre_titleription to be prepended to each plot title
+                string: pre_title string to be prepended to each file title
         """
 
         (
             self.show_plots,
             self.show_frames,
-            self.pre_title,
-            self.soundout,
-            self.plotdir,
             self.Fs,
             self.verbose,
             self.logfile,
+            self.time_scale,
+            self.freq_scale,
         ) = (
             show_plots,
             show_frames,
-            pre_title,
-            soundout,
-            plotdir,
             Fs,
             verbose,
             logfile,
+            time_scale,
+            freq_scale,
         )
+        self.pre_title = ""
         self.colors = [
             "r",
             "g",
@@ -84,14 +84,12 @@ class Pghi_Plot(object):
             "tab:gray",
             "tab:olive",
         ]
+
         try:
-            os.mkdir(plotdir)
+            os.mkdir("results")
         except:
             pass
-        try:
-            os.mkdir(soundout)
-        except:
-            pass
+
         self.openfile = ""
         self.songList = (
             glob.glob("./*.mp3", recursive=False)
@@ -102,9 +100,12 @@ class Pghi_Plot(object):
         self.logprint("logfile={}".format(logfile))
 
     def save_plots(self, title):
-        file = self.plotdir + title + ".png"
+        file = "./results/" + self.pre_title + " " + title + ".png"
         print("saving plot to file: " + file)
         plt.savefig(file, dpi=300)
+        globals.table.add_a_row(
+            file_name=file, time_scale=self.time_scale, freq_scale=self.freq_scale
+        )
         if self.show_plots:
             figManager = plt.get_current_fig_manager()
             # figManager.window.showMaximized()
@@ -120,7 +121,7 @@ class Pghi_Plot(object):
         if mask is not None:
             samples = samples * mask
         samples = np.transpose(samples)
-        title = self.pre_title + title
+        # title = self.pre_title + title
 
         fig = plt.figure()
         plt.title(title)
@@ -134,7 +135,7 @@ class Pghi_Plot(object):
     def spectrogram(self, samples, title):
         if not self.verbose:
             return
-        title = self.pre_title + title
+        # title = self.pre_title + title
         plt.title(title)
         ff, tt, Sxx = signal.spectrogram(samples, nfft=8192)
 
@@ -262,9 +263,7 @@ class Pghi_Plot(object):
         if override_verbose == False:
             if not self.verbose:
                 return
-            filename = self.plotdir + self.pre_title + title + ".aac"
-        else:
-            filename = self.soundout + "_" + title + ".aac"
+        filename = "./results/" + self.pre_title + title + ".mp3"
 
         if len(sig.shape) == 1:
             sig = np.reshape(sig, (1, -1))
@@ -283,11 +282,14 @@ class Pghi_Plot(object):
             data=sig, sample_width=2, frame_rate=self.Fs, channels=channels
         )
         output_sound.export(filename, format="adts")
+        globals.table.add_a_row(
+            file_name=filename, time_scale=self.time_scale, freq_scale=self.freq_scale
+        )
 
     def plot_3d(self, title, sigs, mask=None, startpoints=None):
         if not self.verbose:
             return
-        title = self.pre_title + title
+        # title = self.pre_title + title
         figax = plt.figure()
         plt.axis("off")
         plt.title(title)
@@ -358,8 +360,8 @@ class Pghi_Plot(object):
 
     def logprint(self, txt):
         if self.verbose:
-            if self.openfile != "./pghi_plots/" + self.logfile:
-                self.openfile = "./pghi_plots/" + self.logfile
+            if self.openfile != "./results/" + self.logfile:
+                self.openfile = "./results/" + self.logfile
                 self.file = open(self.openfile, mode="w")
             print(txt, file=self.file, flush=True)
         print(txt)

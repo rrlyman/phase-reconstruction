@@ -18,7 +18,6 @@ import scipy.signal as signal
 import pghi_plot
 from scipy import ndimage
 
-
 dtype = np.float64
 
 
@@ -40,7 +39,6 @@ class PGHI(object):
         gamma=None,
         h=0.01,
         plt=None,
-        pre_title="",
         show_plots=False,
         show_frames=25,
         verbose=True,
@@ -73,8 +71,6 @@ class PGHI(object):
             h
                 the relative height of the Gaussian window function at edges
                 of the window, h = 1 mid window
-            pre_title
-                string to prepend to the file names when storing plots and sound files
             show_plots
                 if True, each plot window becomes active and must be closed to continue
                 the program. Handy for rotating the plot with the cursor for 3d plots
@@ -112,8 +108,7 @@ class PGHI(object):
             self.lambdasqr,
             self.g,
             self.gl,
-            h,
-            self.pre_title,
+            self.h,
             self.verbose,
             self.Fs,
             self.gamma,
@@ -127,14 +122,12 @@ class PGHI(object):
             g,
             gl,
             h,
-            pre_title,
             verbose,
             Fs,
             gamma,
         )
 
         self.M2 = int(self.M / 2) + 1
-
         self.a_s = int(self.M / redundancy)
         self.a_a = int(self.a_s / time_scale)
         self.magnitude = np.zeros((3, self.M2))
@@ -144,11 +137,14 @@ class PGHI(object):
         self.logs = np.zeros((3, self.M2))
         self.original_phase = np.zeros((3, self.M2))
         self.corig = None
+
         self.plt = pghi_plot.Pghi_Plot(
             show_plots=show_plots,
             show_frames=show_frames,
-            pre_title=pre_title,
             logfile="log_rtpghi.txt",
+            verbose=verbose,
+            time_scale=self.time_scale,
+            freq_scale=self.freq_scale,
         )
 
         if lambdasqr is None:
@@ -182,9 +178,13 @@ class PGHI(object):
         self.plt.verbose = verbose
         return saved_d
 
-    def test(self, pre_title):
-        self.plt.pre_title = pre_title + " "
-        self.logprint("\n" + pre_title)
+    def test_name(self, testName):
+        self.plt.pre_title = testName + str.format(
+            " rtpghi time_scale_{0:3.2} freq_scale_{1:3.2}",
+            self.time_scale,
+            self.freq_scale,
+        )
+        self.logprint("\n" + self.plt.pre_title)
 
     def logprint(self, txt):
         self.plt.logprint(txt)
@@ -300,22 +300,22 @@ class PGHI(object):
         self.fgradplus = np.pi
         self.fgrad[1] = -fmul * self.dxdt(self.logs) + self.fgradplus
 
-        h = []
+        hp = []
 
         mask = magnitude > (self.tol * np.max(magnitude))
         n0 = 0
         for m0 in range(M2):
-            heapq.heappush(h, (-self.magnitude[n0, m0], n0, m0))
+            heapq.heappush(hp, (-self.magnitude[n0, m0], n0, m0))
 
-        while len(h) > 0:
-            s = heapq.heappop(h)
+        while len(hp) > 0:
+            s = heapq.heappop(hp)
             n, m = s[1], s[2]
             if n == 1 and m < M2 - 1 and mask[m + 1]:  # North
                 mask[m + 1] = False
                 self.phase[n, m + 1] = (
                     self.phase[n, m] + (self.fgrad[n, m] + self.fgrad[n, m + 1]) / 2
                 )
-                heapq.heappush(h, (-self.magnitude[n, m + 1], n, m + 1))
+                heapq.heappush(hp, (-self.magnitude[n, m + 1], n, m + 1))
                 if self.plt.verbose and self.debug_count <= 2000:
                     self.debugInfo(n, m + 1, n, m, self.phase, self.original_phase)
 
@@ -324,7 +324,7 @@ class PGHI(object):
                 self.phase[n, m - 1] = (
                     self.phase[n, m] - (self.fgrad[n, m] + self.fgrad[n, m - 1]) / 2
                 )
-                heapq.heappush(h, (-self.magnitude[n, m - 1], n, m - 1))
+                heapq.heappush(hp, (-self.magnitude[n, m - 1], n, m - 1))
                 if self.plt.verbose and self.debug_count <= 2000:
                     self.debugInfo(n, m - 1, n, m, self.phase, self.original_phase)
 
@@ -334,7 +334,7 @@ class PGHI(object):
                     self.phase[n, m]
                     + self.time_scale * (self.tgrad[n, m] + self.tgrad[(n + 1), m]) / 2
                 )
-                heapq.heappush(h, (-self.magnitude[n + 1, m], 1, m))
+                heapq.heappush(hp, (-self.magnitude[n + 1, m], 1, m))
                 if self.plt.verbose and self.debug_count <= 2000:
                     self.debugInfo(n + 1, m, n, m, self.phase, self.original_phase)
 
