@@ -216,34 +216,35 @@ def warble_test():
 
 
 ############################  program start ###############################
+if __name__ == "__main__":
 
-algorithm = pghi.PGHI(
-    tol=1e-3,
-    show_frames=100,
-    time_scale=1 / scale_up,
-    freq_scale=scale_up,
-    show_plots=False,
-    verbose=True,
-)
+    algorithm = pghi.PGHI(
+        tol=1e-3,
+        show_frames=100,
+        time_scale=1 / scale_up,
+        freq_scale=scale_up,
+        show_plots=False,
+        verbose=True,
+    )
 
-warble_test()
-pulse_test()
-sine_test()
-sweep_test()
-audio_test()
+    warble_test()
+    pulse_test()
+    sine_test()
+    sweep_test()
+    audio_test()
 
-algorithm = rtpghi.PGHI(
-    tol=1e-3,
-    show_frames=100,
-    time_scale=1 / scale_up,
-    freq_scale=scale_up,
-    show_plots=False,
-    verbose=True,
-)
-# algorithm.setverbose(True)
-audio_test()
+    algorithm = rtpghi.PGHI(
+        tol=1e-3,
+        show_frames=100,
+        time_scale=1 / scale_up,
+        freq_scale=scale_up,
+        show_plots=False,
+        verbose=True,
+    )
+    # algorithm.setverbose(True)
+    audio_test()
 
-# gl = 2048
-# g = signal.windows.hann(gl)
-# gamma =gl**2*.25645
-# algorithm =pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
+    # gl = 2048
+    # g = signal.windows.hann(gl)
+    # gamma =gl**2*.25645
+    # algorithm =pghi.PGHI(tol = 1e-6, show_plots = False, show_frames=10, g=g,gamma = gamma, gl=gl)
