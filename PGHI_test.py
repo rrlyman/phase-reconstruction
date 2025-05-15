@@ -13,6 +13,7 @@ to run:
 or
     python3 PGHI_test.py
 
+    look in the "results" directory for the program output
 """
 
 # REQUIRES FFMEG TO BE INSTALLED IN THE SYSTEM
@@ -144,7 +145,9 @@ def audio_test():
         # saved = algorithm.setverbose(True)
         #         saved = algorithm.setverbose(True)
         algorithm.plt.signal_to_file(
-            np.stack(stereo), song_title, override_verbose=True
+            np.stack(stereo),
+            "====== END RESULT of audio test ======",
+            override_verbose=True,
         )
         algorithm.logprint("elapsed time = {:8.2f} seconds\n".format(tm.time() - etime))
         # algorithm.setverbose(saved)

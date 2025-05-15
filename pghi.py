@@ -489,7 +489,7 @@ class PGHI(object):
                 cum_waveforms.append(vout)
             sig[n * a_s : n * a_s + M] += vs
         self.plt.plot_waveforms("Gabor Contributions", cum_waveforms)
-        self.plt.signal_to_file(sig, "signal_out")
+        self.plt.signal_to_file(sig, "complex_frames_to_signal")
         self.plt.spectrogram(sig, "spectrogram signal out")
         return sig
 
