@@ -127,6 +127,7 @@ def audio_test():
     :returns: None
     :return type: None
     """
+    algorithm.rewind_file_list()
     for nfile in range(100):  # 100 arbitrary file limit
         etime = tm.time()
         # algorithm.test_name("audio test " + song_title)
@@ -244,7 +245,7 @@ if __name__ == "__main__":
         show_plots=False,
         verbose=True,
     )
-    # algorithm.setverbose(True)
+
     audio_test()
 
     # gl = 2048
