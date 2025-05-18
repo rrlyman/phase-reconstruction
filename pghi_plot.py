@@ -101,6 +101,7 @@ class Pghi_Plot(object):
             glob.glob("./*.mp3", recursive=False)
             + glob.glob("./*.wav", recursive=False)
             + glob.glob("./*.aac", recursive=False)
+            + glob.glob("./*.ogg", recursive=False)
         )
         self.fileCount = 0
         self.logprint("logfile={}".format(logfile))

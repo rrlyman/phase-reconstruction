@@ -38,24 +38,26 @@ def sine_test():
     """
     Conduct a pure sine wave test to verify signal processing
 
-    :param f: Frequency of the sine wave determined by the parameters Fs and M
-    :type f: float
-
-    :param dur: Duration of the signal in samples (equivalent to 2 seconds)
-    :type dur: int
-
-    :param signal_in: The generated signal using a chirp function
-    :type signal_in: numpy.ndarray
-
-    :returns: None
-    :return type: None
     """
-
-    f = 10 * algorithm.Fs / algorithm.M  # fft bin #10
+    f = 440  # frequency in Hz
+    dur = 2  # duration in seconds
     algorithm.test_name("pure sine test {:4.0f}Hz".format(f))
     dur = int(2 * algorithm.Fs)  # 2 seconds
     signal_in = signal.chirp(range(dur), f / algorithm.Fs, dur, f / algorithm.Fs)
-    algorithm.signal_to_signal(signal_in)
+    signal_out = algorithm.signal_to_signal(signal_in)
+    algorithm.plt.signal_to_file(
+        signal_out,
+        "====== END RESULT of sine test ======",
+        override_verbose=True,
+    )
+    sz = min(signal_in.shape[0], signal_out.shape[0])
+
+    harmony = np.add(signal_in[:sz], signal_out[:sz])
+    algorithm.plt.signal_to_file(
+        harmony,
+        "harmony",
+        override_verbose=True,
+    )
 
 
 def pulse_test():
@@ -135,21 +137,33 @@ def audio_test():
         if audio_in is None:
             break
         stereo = []
+        harmony_stereo = []
         for i in range(audio_in.shape[0]):  # channels = 2 for stereo
             algorithm.test_name("audio test " + song_title + " ch{}".format(i))
             signal_in = audio_in[i]
             signal_out = algorithm.signal_to_signal(signal_in)
+            sz = min(signal_in.shape[0], signal_out.shape[0])
+            harmony = np.add(signal_in[:sz], signal_out[:sz])
             algorithm.plt.plot_waveforms(
                 "Signal in, Signal out", [signal_in, signal_out]
             )
             stereo.append(signal_out)
+            harmony_stereo.append(harmony)
         # saved = algorithm.setverbose(True)
         #         saved = algorithm.setverbose(True)
+        audio_out = np.stack(stereo)
+        harmony_out = np.stack(harmony_stereo)
         algorithm.plt.signal_to_file(
-            np.stack(stereo),
+            audio_out,
             "====== END RESULT of audio test ======",
             override_verbose=True,
         )
+        algorithm.plt.signal_to_file(
+            harmony_out,
+            "====== HARMONY RESULT of audio test ======",
+            override_verbose=True,
+        )
+
         algorithm.logprint("elapsed time = {:8.2f} seconds\n".format(tm.time() - etime))
         # algorithm.setverbose(saved)
 
@@ -194,30 +208,6 @@ def warble_test():
     )
     algorithm.signal_to_signal(signal_in)
 
-    """
-        Configure and execute a series of audio tests using the PGHI algorithm.
-    
-        The function initializes a PGHI object with a given tolerance, frame display frequency, time scale, frequency scale,
-        plot display option, and verbosity level. It sets the verbose mode to false after initialization and runs several 
-        audio test functions, including warble_test, pulse_test, sine_test, sweep_test, and audio_test.
-    
-        :param tol: tolerance for the iterative PGHI algorithm
-        :type tol: float
-        :param show_frames: interval of frames at which to display updates
-        :type show_frames: int
-        :param time_scale: scaling factor for the time dimension
-        :type time_scale: float
-        :param freq_scale: scaling factor for the frequency dimension
-        :type freq_scale: float
-        :param show_plots: whether to display resulting plots
-        :type show_plots: bool
-        :param verbose: verbosity of the output
-        :type verbose: bool
-    
-        :returns: None
-        :return type: None
-    """
-
 
 ############################  program start ###############################
 if __name__ == "__main__":
@@ -229,6 +219,7 @@ if __name__ == "__main__":
         freq_scale=scale_up,
         show_plots=False,
         verbose=True,
+        logfile="log_pghi.txt",
     )
 
     warble_test()
@@ -244,6 +235,7 @@ if __name__ == "__main__":
         freq_scale=scale_up,
         show_plots=False,
         verbose=True,
+        logfile="log_rtpghi.txt",
     )
 
     audio_test()

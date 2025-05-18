@@ -48,6 +48,11 @@ class PGHI_base(object):
         Fs=44100,
         logfile="",
     ):
+        params = locals()
+        params.pop("self", None)  # Remove 'self' from the dictionary
+        print(params)
+
+        self.__dict__.update(params)
         """
         Parameters
             redundancy
@@ -90,83 +95,58 @@ class PGHI_base(object):
         Example
             p = pghi.PGHI(redundancy=8, M=2048,tol = 1e-6, show_plots = False, show_frames=20)
         """
-        if gl is None:
-            gl = M
-        if gamma is not None:
-            lambdasqr = gamma / (2 * np.pi)
-        if g is None:
+        if self.gl is None:
+            self.gl = self.M
+        if self.gamma is not None:
+            self.lambdasqr = self.gamma / (2 * np.pi)
+        if self.g is None:
             # Auger, Motin, Flandrin #19
-            lambda_ = (-(gl**2) / (8 * np.log(h))) ** 0.5
-            lambdasqr = lambda_**2
-            gamma = 2 * np.pi * lambdasqr
-            g = np.array(
-                signal.windows.gaussian(2 * gl + 1, lambda_ * 2, sym=False), dtype=dtype
-            )[1 : 2 * gl + 1 : 2]
-
-        (
-            self.redundancy,
-            self.time_scale,
-            self.freq_scale,
-            self.M,
-            self.tol,
-            self.lambdasqr,
-            self.g,
-            self.gl,
-            self.h,
-            self.verbose,
-            self.Fs,
-            self.gamma,
-        ) = (
-            redundancy,
-            time_scale,
-            freq_scale,
-            M,
-            tol,
-            lambdasqr,
-            g,
-            gl,
-            h,
-            verbose,
-            Fs,
-            gamma,
-        )
+            self.lambda_ = (-(self.gl**2) / (8 * np.log(self.h))) ** 0.5
+            self.lambdasqr = self.lambda_**2
+            self.gamma = 2 * np.pi * self.lambdasqr
+            self.g = np.array(
+                signal.windows.gaussian(2 * self.gl + 1, self.lambda_ * 2, sym=False),
+                dtype=dtype,
+            )[1 : 2 * self.gl + 1 : 2]
 
         self.M2 = int(self.M / 2) + 1
 
-        self.a_s = int(self.M / redundancy)
-        self.a_a = int(self.a_s / time_scale)
+        self.a_s = int(self.M / self.redundancy)
+        self.a_a = int(self.a_s / self.time_scale)
 
         # self.corig = None
 
         self.plt = pghi_plot.Pghi_Plot(
-            show_plots=show_plots,
-            show_frames=show_frames,
-            verbose=verbose,
+            show_plots=self.show_plots,
+            show_frames=self.show_frames,
+            verbose=self.verbose,
             time_scale=self.time_scale,
             freq_scale=self.freq_scale,
-            logfile=logfile,
+            logfile=self.logfile,
         )
 
-        if lambdasqr is None:
+        if self.lambdasqr is None:
             self.logprint("parameter error: must supply lambdasqr and g")
         self.logprint("a_a(analysis time hop size) = {} samples".format(self.a_a))
         self.logprint("a_s(synthesis time hop size) = {} samples".format(self.a_s))
-        self.logprint("M, samples per frame = {}".format(M))
-        self.logprint("tol, small signal filter tolerance ratio = {}".format(tol))
+        self.logprint("M, samples per frame = {}".format(self.M))
+        self.logprint("tol, small signal filter tolerance ratio = {}".format(self.tol))
         self.logprint("lambdasqr = {:9.4f} 2*pi*samples**2  ".format(self.lambdasqr))
         self.logprint("gamma = {:9.4f} 2*pi*samples**2  ".format(self.gamma))
-        self.logprint("h, window height at edges = {} relative to max height".format(h))
+        self.logprint(
+            "h, window height at edges = {} relative to max height".format(self.h)
+        )
         self.logprint("fft bins = {}".format(self.M2))
-        self.logprint("redundancy = {}".format(redundancy))
-        self.logprint("time_scale = {}".format(time_scale))
-        self.logprint("freq_scale = {}".format(freq_scale))
+        self.logprint("redundancy = {}".format(self.redundancy))
+        self.logprint("time_scale = {}".format(self.time_scale))
+        self.logprint("freq_scale = {}".format(self.freq_scale))
         self.plt.plot_waveforms("Window Analysis pghi", [self.g])
 
         denom = 0  # calculate the synthesis window
         self.gsynth = np.zeros_like(self.g, dtype=dtype)
         for l in range(int(self.gl)):
             denom = 0
-            for n in range(-redundancy, redundancy + 1):
+            for n in range(-self.redundancy, self.redundancy + 1):
                 dl = l - n * self.a_s
                 if dl >= 0 and dl < self.M:
                     denom += self.g[dl] ** 2
@@ -277,8 +257,8 @@ class PGHI_base(object):
         return np.absolute(corig), np.angle(corig)
 
     def signal_to_frames(self, s):  # applies window function, g
-        self.plt.signal_to_file(s, "signal_in")
-        self.plt.spectrogram(s, "spectrogram signal in")
+        self.plt.signal_to_file(s, "signal_to_frames")
+        self.plt.spectrogram(s, "spectrogram signal_to_frames")
         L = s.shape[0] - self.M
         self.corig_frames = np.stack(
             [np.fft.rfft(self.g * s[ix : ix + self.M]) for ix in range(0, L, self.a_a)]
@@ -325,8 +305,8 @@ class PGHI_base(object):
           return:
                reconstructed signal
         """
-        self.plt.signal_to_file(signal_in, "signal_in_before_stretch")
-        self.plt.spectrogram(signal_in, "spectrogram signal_in_before_stretch in")
+        self.plt.signal_to_file(signal_in, "original_sound_track")
+        self.plt.spectrogram(signal_in, "original_sound_track in")
         s = self.sigstretch(signal_in)
         magnitude_frames, _ = self.signal_to_magphase_frames(s)
         phase_estimated_frames = self.magnitude_to_phase_estimate(magnitude_frames)

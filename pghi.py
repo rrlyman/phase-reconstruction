@@ -32,83 +32,9 @@ class PGHI(PGHI_base):
 
     def __init__(
         self,
-        redundancy=8,
-        time_scale=1,
-        freq_scale=1,
-        M=2048,
-        gl=None,
-        g=None,
-        tol=1e-6,
-        lambdasqr=None,
-        gamma=None,
-        h=0.01,
-        plt=None,
-        show_plots=False,
-        show_frames=25,
-        verbose=True,
-        Fs=44100,
+        **kwargs,
     ):
-        super().__init__(
-            redundancy=redundancy,
-            time_scale=time_scale,
-            freq_scale=freq_scale,
-            M=M,
-            gl=gl,
-            g=g,
-            tol=tol,
-            lambdasqr=lambdasqr,
-            gamma=gamma,
-            h=h,
-            plt=plt,
-            show_plots=show_plots,
-            show_frames=show_frames,
-            verbose=verbose,
-            Fs=Fs,
-            logfile="log_pghi.txt",
-        )
-
-        """
-        Parameters
-            redundancy
-                number of hops per window
-            time_scale
-                multiplier to lengthen/shorten time, higher number is slower output
-            freq_scale
-                multiplier to expand/contract frequency scale
-            M
-                number of samples in for each FFT calculation
-                measure: samples
-            gl length of the sampling window
-                measure: samples
-            g
-                windowing function of shape (gl,)
-            lambdasqr
-                constant for windowing function
-                measure: samples**2
-            gamma
-                alternative to lambdasqr
-                measure 2*pi*samples**2
-            tol
-                small signal relative magnitude filtering size
-                measure: filtering height/maximum magnitude height
-            h
-                the relative height of the Gaussian window function at edges
-                of the window, h = 1 mid window
-            show_plots
-                if True, each plot window becomes active and must be closed to continue
-                the program. Handy for rotating the plot with the cursor for 3d plots
-                if False, plots are saved to the ./pghi_plots sub directory
-            show_frames
-                The number of frames to plot on each side of the algorithm start point
-            verbose
-                boolean, if True then save output to ./pghi_plots directory
-
-            Fs
-                sampling frequency
-                measure - samples per second
-        Example
-            p = pghi.PGHI(redundancy=8, M=2048,tol = 1e-6, show_plots = False, show_frames=20)
-        """
+        super().__init__(**kwargs)
 
     def test_name(self, testName):
         super().test_name(testName, __name__)
